@@ -75,6 +75,7 @@ class Provider(object):
     :cvar EXOSCALE: Exoscale driver.
     :cvar IKOULA: Ikoula driver.
     :cvar AZURE: Azure driver.
+    :cvar PROFIT_BRICKS: ProfitBricks driver.
     """
     AZURE = 'azure'
     DUMMY = 'dummy'
@@ -119,7 +120,8 @@ class Provider(object):
     CLOUDFRAMES = 'cloudframes'
     EXOSCALE = 'exoscale'
     IKOULA = 'ikoula'
-    AZURE_COMPUTE = 'azure_compute'
+    PROFIT_BRICKS = 'profitbricks'
+
 
     # Deprecated constants which are still supported
     EC2_US_EAST = 'ec2_us_east'
