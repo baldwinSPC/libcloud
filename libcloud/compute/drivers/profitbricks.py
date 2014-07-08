@@ -16,9 +16,17 @@
 
 """
 import httplib
+import base64
 
+# MSB: Confirm this is the standard
+
+import xml.etree.ElementTree as ET
+import xml.dom.minidom
+
+#from libcloud.common.xmlrpc import XMLRPCResponse, XMLRPCConnection
+from libcloud.utils.py3 import urlparse, b
 from libcloud.compute.providers import Provider
-from libcloud.common.base import ConnectionUserAndKey
+from libcloud.common.base import ConnectionUserAndKey, XmlResponse, Response
 from libcloud.compute.base import Node, NodeDriver, NodeLocation, NodeSize
 from libcloud.compute.base import NodeImage, StorageVolume
 from libcloud.compute.base import KeyPair
@@ -125,7 +133,7 @@ class ProfitBricksException(LibcloudError):
     """
     pass
 
-class ProfitBricksResponse(]):
+class ProfitBricksResponse():
     """
     Response class for ProfitBricks driver.
     """
@@ -134,13 +142,48 @@ class ProfitBricksResponse(]):
     }
 
 class ProfitBricksConnection(ConnectionUserAndKey):
-    responseCls = ProfitBricksResponse  
-    host = 'api.profitbricks.com/1.2'
-    endpoint = '/1.2'
+    host = 'api.profitbricks.com'
+    responseCls = XmlResponse
+    api_prefix = '/1.2/' # https://api.profitbricks.com/1.2
+
+
+    def add_default_headers(self, headers):
+        headers['Content-Type'] = 'text/xml'
+        headers['Authorization'] = 'Basic %s' % (base64.b64encode(
+            b('%s:%s' % (self.user_id, self.key))).decode('utf-8'))
+
+        return headers
+
+    def encode_data(self, data):
+        # xml ='''
+        # <soapenv:Envelope \
+        # xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
+        # xmlns:ws='http://ws.api.profitbricks.com/'>               \
+        # <soapenv:Header />           \
+        # <soapenv:Body>               \
+        # <ws:getAllDataCenters /> \
+        # </soapenv:Body>              \
+        # </soapenv:Envelope>              \
+        # '''
+        # return xml
+
+        #data = json.dumps(data)
+        return data
+
+    def request(self, action, params=None, data=None, headers=None,
+                method='POST', raw=False):
+        action = self.api_prefix + action
+
+        return super(ProfitBricksConnection, self).request(action=action,
+                                                              params=params,
+                                                              data=data,
+                                                              headers=headers,
+                                                              method=method,
+                                                              raw=raw)
+
 
 class ProfitBricksNodeDriver(NodeDriver):
-
-	connectionCls = ProfitBricksConnection
+    connectionCls = ProfitBricksConnection
     name = "ProfitBricks Node Provider"
     website = 'http://profitbricks.com'
     type = Provider.PROFIT_BRICKS
@@ -158,7 +201,7 @@ class ProfitBricksNodeDriver(NodeDriver):
         'RUNNING': NodeState.RUNNING,
         'BLOCKED': NodeState.STOPPED,
         'PAUSE': NodeState.STOPPED,
-        'SHUTDOWN': NodeState.PENDING
+        'SHUTDOWN': NodeState.PENDING,
         'SHUTOFF': NodeState.STOPPED,
         'CRASHED': NodeState.STOPPED,
     }
@@ -170,7 +213,20 @@ class ProfitBricksNodeDriver(NodeDriver):
         return
 
     def list_images(self, location=None):
-        return
+        action = 'getAllImages'
+
+        xml ='''
+        <soapenv:Envelope \
+        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
+        xmlns:ws='http://ws.api.profitbricks.com/'>               \
+        <soapenv:Header />           \
+        <soapenv:Body>               \
+        <ws:getAllImages /> \
+        </soapenv:Body>              \
+        </soapenv:Envelope>              \
+        '''
+
+        return self._to_images(self.connection.request(action=action,data=xml,method='POST').object)
 
     def list_locations(self):
         return
@@ -257,3 +313,44 @@ class ProfitBricksNodeDriver(NodeDriver):
         raise NotImplementedError(
             'While supported, this is '
             'not implemented at this time.')
+
+    """Private Functions
+    """
+
+    def _to_datacenter(self):
+        return
+
+    def _to_images(self, object):
+        # for target in object.findall(".//return"):
+        #     print target._children
+
+        return [self._to_image(image) for image in object.findall('.//return')]
+
+    def _to_image(self, image):
+
+        elements = list(image.iter())
+        image_id = elements[0].find('imageId').text
+        image_name = elements[0].find('imageName').text
+        image_size = elements[0].find('imageSize').text
+        image_type = elements[0].find('imageType').text
+        cpu_hotpluggable = elements[0].find('cpuHotpluggable').text
+        memory_hotpluggable = elements[0].find('memoryHotpluggable').text
+        os_type = elements[0].find('osType').text
+        public = elements[0].find('public').text
+        region = elements[0].find('region').text
+        writeable = elements[0].find('writeable').text
+
+        return NodeImage(id=image_id,
+                        name=image_name,
+                        driver=self.connection.driver,
+                        extra={
+                                'image_size': image_size,
+                                'image_type': image_type,
+                                'cpu_hotpluggable': cpu_hotpluggable,
+                                'memory_hotpluggable': memory_hotpluggable,
+                                'os_type': os_type,
+                                'public': public,
+                                'region': region,
+                                'writeable': writeable
+                            }
+                        )
