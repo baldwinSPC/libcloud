@@ -29,7 +29,7 @@ from libcloud.compute.providers import Provider
 from libcloud.common.base import ConnectionUserAndKey, XmlResponse, Response
 from libcloud.compute.base import Node, NodeDriver, NodeLocation, NodeSize
 from libcloud.compute.base import NodeImage, StorageVolume
-from libcloud.compute.base import KeyPair
+from libcloud.compute.base import KeyPair, UuidMixin
 from libcloud.compute.types import NodeState
 from libcloud.common.types import LibcloudError
 
@@ -181,6 +181,33 @@ class ProfitBricksConnection(ConnectionUserAndKey):
                                                               method=method,
                                                               raw=raw)
 
+class Datacenter(UuidMixin):
+    """
+    """
+
+    def __init__(self, id, name, datacenter_version, driver, extra=None):
+        """
+        :param id: Datacenter ID.
+        :type id: ``str``
+
+        :param name: Datacenter name.
+        :type name: ``str``
+
+        :param datacenter_version: Datacenter version.
+        : type datacenter_version: ``str``
+
+        :param driver: Driver this image belongs to.
+        :type driver: :class:`.NodeDriver`
+        """
+        self.id = str(id)
+        self.name = name
+        self.datacenter_version = datacenter_version
+        self.driver = driver
+        UuidMixin.__init__(self)
+
+    def __repr__(self):
+        return (('<Datacenter: id=%s, name=%s, datacenter_version=%s, driver=%s  ...>')
+                % (self.id, self.name, self.datacenter_version, self.driver.name))
 
 class ProfitBricksNodeDriver(NodeDriver):
     connectionCls = ProfitBricksConnection
@@ -290,7 +317,20 @@ class ProfitBricksNodeDriver(NodeDriver):
         return
 
     def ex_list_datacenters(self):
-        return
+        action = 'getAllDataCenters'
+
+        xml ='''
+        <soapenv:Envelope \
+        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
+        xmlns:ws='http://ws.api.profitbricks.com/'>               \
+        <soapenv:Header />           \
+        <soapenv:Body>               \
+        <ws:getAllDataCenters /> \
+        </soapenv:Body>              \
+        </soapenv:Envelope>              \
+        '''
+
+        return self._to_datacenters(self.connection.request(action=action,data=xml,method='POST').object)
 
     def ex_list_network_interfaces(self):
         return
@@ -317,17 +357,25 @@ class ProfitBricksNodeDriver(NodeDriver):
     """Private Functions
     """
 
-    def _to_datacenter(self):
-        return
+    def _to_datacenters(self, object):
+        return [self._to_datacenter(datacenter) for datacenter in object.findall('.//return')]
+
+    def _to_datacenter(self, datacenter):
+        elements = list(datacenter.iter())
+        datacenter_id = elements[0].find('dataCenterId').text
+        datacenter_name = elements[0].find('dataCenterName').text
+        datacenter_version = elements[0].find('dataCenterVersion').text
+
+        return Datacenter(id=datacenter_id,
+                        name=datacenter_name,
+                        datacenter_version=datacenter_version,
+                        driver=self.connection.driver
+                        )
 
     def _to_images(self, object):
-        # for target in object.findall(".//return"):
-        #     print target._children
-
         return [self._to_image(image) for image in object.findall('.//return')]
 
     def _to_image(self, image):
-
         elements = list(image.iter())
         image_id = elements[0].find('imageId').text
         image_name = elements[0].find('imageName').text
