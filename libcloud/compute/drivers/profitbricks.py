@@ -17,13 +17,8 @@
 """
 import httplib
 import base64
-
-# MSB: Confirm this is the standard
-
 import xml.etree.ElementTree as ET
-import xml.dom.minidom
 
-#from libcloud.common.xmlrpc import XMLRPCResponse, XMLRPCConnection
 from libcloud.utils.py3 import urlparse, b
 from libcloud.compute.providers import Provider
 from libcloud.common.base import ConnectionUserAndKey, XmlResponse, Response
@@ -209,6 +204,37 @@ class Datacenter(UuidMixin):
         return (('<Datacenter: id=%s, name=%s, datacenter_version=%s, driver=%s  ...>')
                 % (self.id, self.name, self.datacenter_version, self.driver.name))
 
+class DatacenterDetail(UuidMixin):
+    """
+    """
+
+    def __init__(self, name, datacenter_version, driver, extra=None):
+        """
+        :param id: Datacenter ID.
+        :type id: ``str``
+
+        :param name: Datacenter name.
+        :type name: ``str``
+
+        :param datacenter_version: Datacenter version.
+        : type datacenter_version: ``str``
+
+        :param driver: Driver this image belongs to.
+        :type driver: :class:`.NodeDriver`
+        """
+        self.name = name
+        self.servers = servers
+        self.storages = storages
+        self.load_balancers = load_balancers
+        self.provisioning_state = provisioning_state
+        self.region = region
+        self.driver = driver
+        UuidMixin.__init__(self)
+
+    def __repr__(self):
+        return (('<Datacenter: id=%s, name=%s, datacenter_version=%s, driver=%s  ...>')
+                % (self.id, self.name, self.datacenter_version, self.driver.name))
+
 class ProfitBricksNodeDriver(NodeDriver):
     connectionCls = ProfitBricksConnection
     name = "ProfitBricks Node Provider"
@@ -313,8 +339,33 @@ class ProfitBricksNodeDriver(NodeDriver):
     def ex_destroy_datacenter(self):
         return
 
-    def ex_describe_datacenter(self):
-        return
+    def ex_describe_datacenter(self, datacenter):
+        action = 'getDataCenter'
+
+        xml = '''
+        <soapenv:Envelope \
+        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
+        xmlns:ws='http://ws.api.profitbricks.com/'> \
+        <soapenv:Header/> \
+        <soapenv:Body> \
+        <ws:getDataCenter> \
+        <dataCenterId>''' + datacenter.id + '''</dataCenterId> \
+        </ws:getDataCenter> \
+        </soapenv:Body> \
+        </soapenv:Envelope> 
+        '''
+        print xml
+        # _describe_datacenter
+
+        request = self.connection.request(action=action,data=xml,method='POST').object
+        print request
+
+        return [self._describe_datacenter(datacenter) for datacenter in object.findall('.//return')]
+        # params = {'scrub_data': '1'}
+        # res = self.connection.request('/droplets/%s/destroy/' % (node.id),
+        #                               params=params)
+        # return res.status == httplib.OK
+        #return
 
     def ex_list_datacenters(self):
         action = 'getAllDataCenters'
@@ -369,6 +420,24 @@ class ProfitBricksNodeDriver(NodeDriver):
         return Datacenter(id=datacenter_id,
                         name=datacenter_name,
                         datacenter_version=datacenter_version,
+                        driver=self.connection.driver
+                        )
+
+    def _describe_datacenter(self, object):
+        elements = list(datacenter.iter())
+        datacenter_name = elements[0].find('dataCenterName').text
+        servers = elements[0].find('servers').text
+        region = elements[0].find('region').text
+        storages = elements[0].find('storages').text
+        load_balancers = elements[0].find('loadBalancers').text
+        provisioning_state = elements[0].find('provisioningState').text
+
+        return DatacenterDetail(name=datacenter_name,
+                        servers=datacenter_version,
+                        storages=storages,
+                        region=region,
+                        load_balancers=load_balancers,
+                        provisioning_state=provisioning_state,
                         driver=self.connection.driver
                         )
 
