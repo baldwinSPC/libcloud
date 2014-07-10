@@ -164,25 +164,30 @@ class ProfitBricksConnection(ConnectionUserAndKey):
         return headers
 
     def encode_data(self, data):
-        print "encoding"
-        print data
-
         soap_env = ET.Element('soapenv:Envelope',{
             'xmlns:soapenv' : 'http://schemas.xmlsoap.org/soap/envelope/',
             'xmlns:ws' : 'http://ws.api.profitbricks.com/'
             })
         soap_header = ET.SubElement(soap_env, 'soapenv:Header')
         soap_body = ET.SubElement(soap_env, 'soapenv:Body')
+        soap_req_body = ET.SubElement(soap_body, 'ws:' + data['action'] + '' )
 
-        # 
-        soap_req_body = ET.SubElement(soap_body, 'ws:createDataCenter' )
-        child = ET.SubElement(soap_req_body, 'dataCenterName')
-        child.text = "some name"
+        if 'request' in data.keys():
+            soap_req_body = ET.SubElement(soap_req_body, 'request')
+            for key, value in data.iteritems():
+                if not (key == 'action' or key == 'request'):
+                    child = ET.SubElement(soap_req_body, key)
+                    child.text = value
+        else:
+            for key, value in data.iteritems():
+                if not (key == 'action'):
+                    child = ET.SubElement(soap_req_body, key)
+                    child.text = value
 
-        print xml.dom.minidom.parseString(tostring(soap_env)).toprettyxml(indent='    ')
+#        print xml.dom.minidom.parseString(tostring(soap_env)).toprettyxml(indent='    ')
         soap_post = ET.tostring(soap_env)
 
-        return data
+        return soap_post
 
     def request(self, action, params=None, data=None, headers=None,
                 method='POST', raw=False):
@@ -356,7 +361,7 @@ class ProfitBricksNodeDriver(NodeDriver):
     def ex_start_node(self, node):
         return True
 
-    def ex_create_datacenter(self, name, region="Default"):
+    def ex_create_datacenter(self, name, region="DEFAULT"):
         action = 'createDataCenter'
 
         xml = '''
@@ -380,21 +385,11 @@ class ProfitBricksNodeDriver(NodeDriver):
 
     def ex_destroy_datacenter(self, datacenter):
         action = 'deleteDataCenter'
+        body = {'action': action,
+                'dataCenterId': datacenter.id
+                }
 
-        xml = '''
-        <soapenv:Envelope \
-        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
-        xmlns:ws='http://ws.api.profitbricks.com/'> \
-        <soapenv:Header/> \
-        <soapenv:Body> \
-        <ws:deleteDataCenter> \
-        <dataCenterId>''' + datacenter.id + '''</dataCenterId> \
-        </ws:deleteDataCenter> \
-        </soapenv:Body> \
-        </soapenv:Envelope>        
-        '''
-
-        request = self.connection.request(action=action,data=xml,method='POST').object
+        request = self.connection.request(action=action,data=body,method='POST').object
 
         return True
 
@@ -430,44 +425,19 @@ class ProfitBricksNodeDriver(NodeDriver):
 
     def ex_list_datacenters(self):
         action = 'getAllDataCenters'
+        body = {'action': action}
 
-        body = '''
-        <ws:getAllDataCenters />
-        '''
-
-        xml ='''
-        <soapenv:Envelope \
-        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
-        xmlns:ws='http://ws.api.profitbricks.com/'>               \
-        <soapenv:Header />           \
-        <soapenv:Body>               \
-        <ws:getAllDataCenters /> \
-        </soapenv:Body>              \
-        </soapenv:Envelope>              \
-        '''
-
-        return self._to_datacenters(self.connection.request(action=action,data=xml,method='POST').object)
+        return self._to_datacenters(self.connection.request(action=action,data=body,method='POST').object)
 
     def ex_update_datacenter(self, datacenter, name):
         action = 'updateDataCenter'
+        body = {'action': action,
+                'request': 'true',
+                'dataCenterId': datacenter.id,
+                'dataCenterName': name
+                }
 
-        xml = '''
-        <soapenv:Envelope \
-        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
-        xmlns:ws='http://ws.api.profitbricks.com/'> \
-        <soapenv:Header/> \
-        <soapenv:Body> \
-        <ws:updateDataCenter> \
-        <request> \
-        <dataCenterId>''' + datacenter.id + '''</dataCenterId> \
-        <dataCenterName>''' + name + '''</dataCenterName> \
-        </request> \
-        </ws:updateDataCenter> \
-        </soapenv:Body> \
-        </soapenv:Envelope>        
-        '''
-
-        request = self.connection.request(action=action,data=xml,method='POST').object
+        request = self.connection.request(action=action,data=body,method='POST').object
 
         return
 
