@@ -15,9 +15,18 @@
 """ProfitBricks Compute driver
 
 """
+# TODO:
+# - ex_create_datacenter needs to correctly return a Datacenter object.
+# - complete encoding work
+# - ex_describe_datacenter needs to be fixed
+# - add exception and success responses
+
 import httplib
 import base64
 import xml.etree.ElementTree as ET
+import xml.dom.minidom
+import json
+from xml.etree.ElementTree import tostring
 
 from libcloud.utils.py3 import urlparse, b
 from libcloud.compute.providers import Provider
@@ -122,6 +131,11 @@ PROFITBRICKS_COMPUTE_INSTANCE_TYPES = {
     }    
 }
 
+DATACENTER_REGIONS= {
+    'NORTH_AMERICA': {'country': 'USA'},
+    'EUROPE': {'country': 'DEU'},
+}
+
 class ProfitBricksException(LibcloudError):
     """
     Exception class for ProfitBricks driver.
@@ -150,19 +164,24 @@ class ProfitBricksConnection(ConnectionUserAndKey):
         return headers
 
     def encode_data(self, data):
-        # xml ='''
-        # <soapenv:Envelope \
-        # xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
-        # xmlns:ws='http://ws.api.profitbricks.com/'>               \
-        # <soapenv:Header />           \
-        # <soapenv:Body>               \
-        # <ws:getAllDataCenters /> \
-        # </soapenv:Body>              \
-        # </soapenv:Envelope>              \
-        # '''
-        # return xml
+        print "encoding"
+        print data
 
-        #data = json.dumps(data)
+        soap_env = ET.Element('soapenv:Envelope',{
+            'xmlns:soapenv' : 'http://schemas.xmlsoap.org/soap/envelope/',
+            'xmlns:ws' : 'http://ws.api.profitbricks.com/'
+            })
+        soap_header = ET.SubElement(soap_env, 'soapenv:Header')
+        soap_body = ET.SubElement(soap_env, 'soapenv:Body')
+
+        # 
+        soap_req_body = ET.SubElement(soap_body, 'ws:createDataCenter' )
+        child = ET.SubElement(soap_req_body, 'dataCenterName')
+        child.text = "some name"
+
+        print xml.dom.minidom.parseString(tostring(soap_env)).toprettyxml(indent='    ')
+        soap_post = ET.tostring(soap_env)
+
         return data
 
     def request(self, action, params=None, data=None, headers=None,
@@ -195,13 +214,17 @@ class Datacenter(UuidMixin):
         :type driver: :class:`.NodeDriver`
         """
         self.id = str(id)
-        self.name = name
+        if name is None:
+            self.name = None
+        else:
+            self.name = name
+        #self.name = name
         self.datacenter_version = datacenter_version
         self.driver = driver
         UuidMixin.__init__(self)
 
     def __repr__(self):
-        return (('<Datacenter: id=%s, name=%s, datacenter_version=%s, driver=%s  ...>')
+        return (('<Datacenter: id=%s, name=%s, datacenter_version=%s, driver=%s>')
                 % (self.id, self.name, self.datacenter_version, self.driver.name))
 
 class DatacenterDetail(UuidMixin):
@@ -333,11 +356,47 @@ class ProfitBricksNodeDriver(NodeDriver):
     def ex_start_node(self, node):
         return True
 
-    def ex_create_datacenter(self):
-        return
+    def ex_create_datacenter(self, name, region="Default"):
+        action = 'createDataCenter'
 
-    def ex_destroy_datacenter(self):
-        return
+        xml = '''
+        <soapenv:Envelope \
+        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
+        xmlns:ws='http://ws.api.profitbricks.com/'> \
+        <soapenv:Header/> \
+        <soapenv:Body> \
+        <ws:createDataCenter> \
+        <dataCenterName>''' + name + '''</dataCenterName> \
+        <region>''' + region.upper() + '''</region> \
+        </ws:createDataCenter> \
+        </soapenv:Body> \
+        </soapenv:Envelope>        
+        '''
+
+        if not name:
+            raise ValueError("You must provide a datacenter name.")
+
+        return self._to_datacenters(self.connection.request(action=action,data=xml,method='POST').object)
+
+    def ex_destroy_datacenter(self, datacenter):
+        action = 'deleteDataCenter'
+
+        xml = '''
+        <soapenv:Envelope \
+        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
+        xmlns:ws='http://ws.api.profitbricks.com/'> \
+        <soapenv:Header/> \
+        <soapenv:Body> \
+        <ws:deleteDataCenter> \
+        <dataCenterId>''' + datacenter.id + '''</dataCenterId> \
+        </ws:deleteDataCenter> \
+        </soapenv:Body> \
+        </soapenv:Envelope>        
+        '''
+
+        request = self.connection.request(action=action,data=xml,method='POST').object
+
+        return True
 
     def ex_describe_datacenter(self, datacenter):
         action = 'getDataCenter'
@@ -360,7 +419,9 @@ class ProfitBricksNodeDriver(NodeDriver):
         request = self.connection.request(action=action,data=xml,method='POST').object
         print request
 
-        return [self._describe_datacenter(datacenter) for datacenter in object.findall('.//return')]
+        return self._describe_datacenter(request)
+
+        #return [self._describe_datacenter(datacenter) for datacenter in object.findall('.//return')]
         # params = {'scrub_data': '1'}
         # res = self.connection.request('/droplets/%s/destroy/' % (node.id),
         #                               params=params)
@@ -369,6 +430,10 @@ class ProfitBricksNodeDriver(NodeDriver):
 
     def ex_list_datacenters(self):
         action = 'getAllDataCenters'
+
+        body = '''
+        <ws:getAllDataCenters />
+        '''
 
         xml ='''
         <soapenv:Envelope \
@@ -382,6 +447,29 @@ class ProfitBricksNodeDriver(NodeDriver):
         '''
 
         return self._to_datacenters(self.connection.request(action=action,data=xml,method='POST').object)
+
+    def ex_update_datacenter(self, datacenter, name):
+        action = 'updateDataCenter'
+
+        xml = '''
+        <soapenv:Envelope \
+        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
+        xmlns:ws='http://ws.api.profitbricks.com/'> \
+        <soapenv:Header/> \
+        <soapenv:Body> \
+        <ws:updateDataCenter> \
+        <request> \
+        <dataCenterId>''' + datacenter.id + '''</dataCenterId> \
+        <dataCenterName>''' + name + '''</dataCenterName> \
+        </request> \
+        </ws:updateDataCenter> \
+        </soapenv:Body> \
+        </soapenv:Envelope>        
+        '''
+
+        request = self.connection.request(action=action,data=xml,method='POST').object
+
+        return
 
     def ex_list_network_interfaces(self):
         return
@@ -424,20 +512,23 @@ class ProfitBricksNodeDriver(NodeDriver):
                         )
 
     def _describe_datacenter(self, object):
-        elements = list(datacenter.iter())
-        datacenter_name = elements[0].find('dataCenterName').text
-        servers = elements[0].find('servers').text
-        region = elements[0].find('region').text
-        storages = elements[0].find('storages').text
-        load_balancers = elements[0].find('loadBalancers').text
-        provisioning_state = elements[0].find('provisioningState').text
+        print "inside describe datacenter"
+        #elements = list(object.iter())
+
+
+#        datacenter_name = elements[0].find('dataCenterName').text
+#        servers = elements[0].find('servers').text
+#        region = elements[0].find('region').text
+#        storages = elements[0].find('storages').text
+#        load_balancers = elements[0].find('loadBalancers').text
+#        provisioning_state = elements[0].find('provisioningState').text
 
         return DatacenterDetail(name=datacenter_name,
-                        servers=datacenter_version,
-                        storages=storages,
-                        region=region,
-                        load_balancers=load_balancers,
-                        provisioning_state=provisioning_state,
+ #                       servers=datacenter_version,
+ #                       storages=storages,
+ #                       region=region,
+ #                       load_balancers=load_balancers,
+ #                       provisioning_state=provisioning_state,
                         driver=self.connection.driver
                         )
 

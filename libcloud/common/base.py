@@ -207,6 +207,8 @@ class XmlResponse(Response):
             return self.body
 
         try:
+            # MSB - temp edit
+            print self.body
             body = ET.XML(self.body)
         except:
             raise MalformedResponseError('Failed to parse XML',
