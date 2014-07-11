@@ -263,17 +263,6 @@ class ProfitBricksNodeDriver(NodeDriver):
         action = 'getAllImages'
         body = {'action': action}
 
-        # xml ='''
-        # <soapenv:Envelope \
-        # xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
-        # xmlns:ws='http://ws.api.profitbricks.com/'>               \
-        # <soapenv:Header />           \
-        # <soapenv:Body>               \
-        # <ws:getAllImages /> \
-        # </soapenv:Body>              \
-        # </soapenv:Envelope>              \
-        # '''
-
         return self._to_images(self.connection.request(action=action,data=body,method='POST').object)
 
     def list_locations(self):
@@ -375,7 +364,7 @@ class ProfitBricksNodeDriver(NodeDriver):
 
         request = self.connection.request(action=action,data=body,method='POST').object
 
-        return
+        return True
 
     def ex_clear_datacenter(self, datacenter):
         action = 'clearDataCenter'
