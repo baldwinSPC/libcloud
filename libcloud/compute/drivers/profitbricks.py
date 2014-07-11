@@ -16,9 +16,6 @@
 
 """
 # TODO:
-# - ex_create_datacenter needs to correctly return a Datacenter object.
-# - complete encoding work
-# - ex_describe_datacenter needs to be fixed
 # - add exception and success responses
 
 import httplib
@@ -184,7 +181,7 @@ class ProfitBricksConnection(ConnectionUserAndKey):
                     child = ET.SubElement(soap_req_body, key)
                     child.text = value
 
-#        print xml.dom.minidom.parseString(tostring(soap_env)).toprettyxml(indent='    ')
+        #print xml.dom.minidom.parseString(tostring(soap_env)).toprettyxml(indent='    ')
         soap_post = ET.tostring(soap_env)
 
         return soap_post
@@ -201,9 +198,8 @@ class ProfitBricksConnection(ConnectionUserAndKey):
                                                               raw=raw)
 
 class Datacenter(UuidMixin):
+    """ Datacenter Ojbect
     """
-    """
-
     def __init__(self, id, name, datacenter_version, driver, extra=None):
         """
         :param id: Datacenter ID.
@@ -226,41 +222,11 @@ class Datacenter(UuidMixin):
         #self.name = name
         self.datacenter_version = datacenter_version
         self.driver = driver
+        self.extra = extra or {}
         UuidMixin.__init__(self)
 
     def __repr__(self):
-        return (('<Datacenter: id=%s, name=%s, datacenter_version=%s, driver=%s>')
-                % (self.id, self.name, self.datacenter_version, self.driver.name))
-
-class DatacenterDetail(UuidMixin):
-    """
-    """
-
-    def __init__(self, name, datacenter_version, driver, extra=None):
-        """
-        :param id: Datacenter ID.
-        :type id: ``str``
-
-        :param name: Datacenter name.
-        :type name: ``str``
-
-        :param datacenter_version: Datacenter version.
-        : type datacenter_version: ``str``
-
-        :param driver: Driver this image belongs to.
-        :type driver: :class:`.NodeDriver`
-        """
-        self.name = name
-        self.servers = servers
-        self.storages = storages
-        self.load_balancers = load_balancers
-        self.provisioning_state = provisioning_state
-        self.region = region
-        self.driver = driver
-        UuidMixin.__init__(self)
-
-    def __repr__(self):
-        return (('<Datacenter: id=%s, name=%s, datacenter_version=%s, driver=%s  ...>')
+        return (('<Datacenter: id=%s, name=%s, datacenter_version=%s, driver=%s> ...>')
                 % (self.id, self.name, self.datacenter_version, self.driver.name))
 
 class ProfitBricksNodeDriver(NodeDriver):
@@ -295,19 +261,20 @@ class ProfitBricksNodeDriver(NodeDriver):
 
     def list_images(self, location=None):
         action = 'getAllImages'
+        body = {'action': action}
 
-        xml ='''
-        <soapenv:Envelope \
-        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
-        xmlns:ws='http://ws.api.profitbricks.com/'>               \
-        <soapenv:Header />           \
-        <soapenv:Body>               \
-        <ws:getAllImages /> \
-        </soapenv:Body>              \
-        </soapenv:Envelope>              \
-        '''
+        # xml ='''
+        # <soapenv:Envelope \
+        # xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
+        # xmlns:ws='http://ws.api.profitbricks.com/'>               \
+        # <soapenv:Header />           \
+        # <soapenv:Body>               \
+        # <ws:getAllImages /> \
+        # </soapenv:Body>              \
+        # </soapenv:Envelope>              \
+        # '''
 
-        return self._to_images(self.connection.request(action=action,data=xml,method='POST').object)
+        return self._to_images(self.connection.request(action=action,data=body,method='POST').object)
 
     def list_locations(self):
         return
@@ -364,24 +331,15 @@ class ProfitBricksNodeDriver(NodeDriver):
     def ex_create_datacenter(self, name, region="DEFAULT"):
         action = 'createDataCenter'
 
-        xml = '''
-        <soapenv:Envelope \
-        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
-        xmlns:ws='http://ws.api.profitbricks.com/'> \
-        <soapenv:Header/> \
-        <soapenv:Body> \
-        <ws:createDataCenter> \
-        <dataCenterName>''' + name + '''</dataCenterName> \
-        <region>''' + region.upper() + '''</region> \
-        </ws:createDataCenter> \
-        </soapenv:Body> \
-        </soapenv:Envelope>        
-        '''
+        body = {'action': action,
+                'dataCenterName': name,
+                'region': region.upper()
+                }        
 
         if not name:
             raise ValueError("You must provide a datacenter name.")
 
-        return self._to_datacenters(self.connection.request(action=action,data=xml,method='POST').object)
+        return self._to_datacenters(self.connection.request(action=action,data=body,method='POST').object)
 
     def ex_destroy_datacenter(self, datacenter):
         action = 'deleteDataCenter'
@@ -395,33 +353,11 @@ class ProfitBricksNodeDriver(NodeDriver):
 
     def ex_describe_datacenter(self, datacenter):
         action = 'getDataCenter'
-
-        xml = '''
-        <soapenv:Envelope \
-        xmlns:soapenv='http://schemas.xmlsoap.org/soap/envelope/' \
-        xmlns:ws='http://ws.api.profitbricks.com/'> \
-        <soapenv:Header/> \
-        <soapenv:Body> \
-        <ws:getDataCenter> \
-        <dataCenterId>''' + datacenter.id + '''</dataCenterId> \
-        </ws:getDataCenter> \
-        </soapenv:Body> \
-        </soapenv:Envelope> 
-        '''
-        print xml
-        # _describe_datacenter
-
-        request = self.connection.request(action=action,data=xml,method='POST').object
-        print request
-
-        return self._describe_datacenter(request)
-
-        #return [self._describe_datacenter(datacenter) for datacenter in object.findall('.//return')]
-        # params = {'scrub_data': '1'}
-        # res = self.connection.request('/droplets/%s/destroy/' % (node.id),
-        #                               params=params)
-        # return res.status == httplib.OK
-        #return
+        body = {'action': action,
+                'dataCenterId': datacenter.id
+                }
+        
+        return self._to_datacenters(self.connection.request(action=action,data=body,method='POST').object)
 
     def ex_list_datacenters(self):
         action = 'getAllDataCenters'
@@ -440,6 +376,16 @@ class ProfitBricksNodeDriver(NodeDriver):
         request = self.connection.request(action=action,data=body,method='POST').object
 
         return
+
+    def ex_clear_datacenter(self, datacenter):
+        action = 'clearDataCenter'
+        body = {'action': action,
+                'dataCenterId': datacenter.id
+                }
+
+        request = self.connection.request(action=action,data=body,method='POST').object
+        
+        return True
 
     def ex_list_network_interfaces(self):
         return
@@ -472,34 +418,27 @@ class ProfitBricksNodeDriver(NodeDriver):
     def _to_datacenter(self, datacenter):
         elements = list(datacenter.iter())
         datacenter_id = elements[0].find('dataCenterId').text
-        datacenter_name = elements[0].find('dataCenterName').text
+        if ET.iselement(elements[0].find('dataCenterName')):
+            datacenter_name = elements[0].find('dataCenterName').text
+        else:
+            datacenter_name = None
         datacenter_version = elements[0].find('dataCenterVersion').text
+        if ET.iselement(elements[0].find('provisioningState')):
+            provisioning_state = elements[0].find('provisioningState').text
+        else:
+            provisioning_state = None
+        if ET.iselement(elements[0].find('region')):
+            region = elements[0].find('region').text
+        else:
+            region = None
 
         return Datacenter(id=datacenter_id,
                         name=datacenter_name,
                         datacenter_version=datacenter_version,
-                        driver=self.connection.driver
-                        )
-
-    def _describe_datacenter(self, object):
-        print "inside describe datacenter"
-        #elements = list(object.iter())
-
-
-#        datacenter_name = elements[0].find('dataCenterName').text
-#        servers = elements[0].find('servers').text
-#        region = elements[0].find('region').text
-#        storages = elements[0].find('storages').text
-#        load_balancers = elements[0].find('loadBalancers').text
-#        provisioning_state = elements[0].find('provisioningState').text
-
-        return DatacenterDetail(name=datacenter_name,
- #                       servers=datacenter_version,
- #                       storages=storages,
- #                       region=region,
- #                       load_balancers=load_balancers,
- #                       provisioning_state=provisioning_state,
-                        driver=self.connection.driver
+                        driver=self.connection.driver,
+                        extra={
+                            'provisioning_state': provisioning_state,
+                            'region': region}
                         )
 
     def _to_images(self, object):
