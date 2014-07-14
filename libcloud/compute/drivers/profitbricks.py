@@ -23,8 +23,10 @@ import base64
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 import json
+import copy
 from xml.etree.ElementTree import tostring
 
+from libcloud.utils.networking import is_private_subnet
 from libcloud.utils.py3 import urlparse, b
 from libcloud.compute.providers import Provider
 from libcloud.common.base import ConnectionUserAndKey, XmlResponse, Response
@@ -128,11 +130,6 @@ PROFITBRICKS_COMPUTE_INSTANCE_TYPES = {
     }    
 }
 
-DATACENTER_REGIONS= {
-    'NORTH_AMERICA': {'country': 'USA'},
-    'EUROPE': {'country': 'DEU'},
-}
-
 class ProfitBricksException(LibcloudError):
     """
     Exception class for ProfitBricks driver.
@@ -181,7 +178,8 @@ class ProfitBricksConnection(ConnectionUserAndKey):
                     child = ET.SubElement(soap_req_body, key)
                     child.text = value
 
-        #print xml.dom.minidom.parseString(tostring(soap_env)).toprettyxml(indent='    ')
+        print('REQUEST')
+        print xml.dom.minidom.parseString(tostring(soap_env)).toprettyxml(indent='    ')
         soap_post = ET.tostring(soap_env)
 
         return soap_post
@@ -229,6 +227,21 @@ class Datacenter(UuidMixin):
         return (('<Datacenter: id=%s, name=%s, datacenter_version=%s, driver=%s> ...>')
                 % (self.id, self.name, self.datacenter_version, self.driver.name))
 
+class ExProfitBricksAvailabilityZone(object):
+    """
+    Extension class which stores information about a ProfitBricks 
+    availability zone.
+
+    Note: This class is ProfitBricks specific.
+    """
+
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return (('<ExProfitBricksAvailabilityZone: name=%s>')
+                % (self.name))
+
 class ProfitBricksNodeDriver(NodeDriver):
     connectionCls = ProfitBricksConnection
     name = "ProfitBricks Node Provider"
@@ -253,34 +266,71 @@ class ProfitBricksNodeDriver(NodeDriver):
         'CRASHED': NodeState.STOPPED,
     }
 
+    REGIONS = {
+        '1': {'region': 'NORTH_AMERICA','country': 'USA'},
+        '2': {'region': 'EUROPE', 'country': 'DEU'},
+    }
+
+    AVAILABILITY_ZONE = {
+        '1': {'name': 'AUTO'},
+        '2': {'name': 'ZONE_1'},
+        '3': {'name': 'ZONE_2'},
+    }
+
     """ Core Functions    
     """
 
     def list_sizes(self):
         return
 
-    def list_images(self, location=None):
+    def list_images(self, region=None):
+        '''
+        :keyword     region: Filter the list by region. (optional)
+        :type        region:  ``str``
+        '''
+
         action = 'getAllImages'
         body = {'action': action}
 
-        return self._to_images(self.connection.request(action=action,data=body,method='POST').object)
+        return self._to_images(self.connection.request(action=action,data=body,method='POST').object, region)
 
     def list_locations(self):
-        return
+        locations = []
 
-    def list_nodes(self, ex_cloud_service_name=None):
-        return
+        for key, values in self.REGIONS.items():
+            location = self._to_location(copy.deepcopy(values))
+            locations.append(location)
 
-    def reboot_node(self, node=None, ex_cloud_service_name=None,
-                    ex_deployment_slot=None):
-        return
+        return locations
+
+    def list_nodes(self):
+        action = 'getAllServers'
+        body = {'action': action}
+
+        return self._to_nodes(self.connection.request(action=action,data=body,method='POST').object)
+
+    def reboot_node(self, node=None):
+        action = 'resetServer'
+        body = {'action': action,
+                'serverId': node.id
+                }
+
+        self.connection.request(action=action,data=body,method='POST').object
+
+        return True
 
     def create_node(self, ex_cloud_service_name=None, **kwargs):
         return
 
-    def destroy_node(self, node=None, ex_cloud_service_name=None,
-                     ex_deployment_slot=None):
-        return
+    def destroy_node(self, node, remove_attached_disks=None):
+        action = 'deleteServer'
+        body = {'action': action,
+                'serverId': node.id
+                }
+
+        self.connection.request(action=action,data=body,method='POST').object
+
+        return True
 
     """ Volume Functions
     """
@@ -308,14 +358,51 @@ class ProfitBricksNodeDriver(NodeDriver):
             'destroy_volume is not supported '
             'at this time.')
 
-    """ Extension Methods
+    """ Extension Functions
     """
-
+    ''' Server Extension Functions
+    '''
     def ex_stop_node(self, node):
+        action = 'stopServer'
+        body = {'action': action,
+                'serverId': node.id
+                }
+
+        self.connection.request(action=action,data=body,method='POST').object
+
         return True
 
     def ex_start_node(self, node):
+        action = 'startServer'
+        body = {'action': action,
+                'serverId': node.id
+                }
+
+        self.connection.request(action=action,data=body,method='POST').object
+
         return True
+
+    def ex_list_availability_zones(self):
+        availability_zones = []
+
+        for key, values in self.AVAILABILITY_ZONE.items():
+            name = copy.deepcopy(values)["name"]
+
+            availability_zone = ExProfitBricksAvailabilityZone(
+                name=name
+            )
+            availability_zones.append(availability_zone)
+
+        return availability_zones
+
+    def ex_get_server(self, node):
+        return
+
+    def ex_update_server(self, node):
+        return
+
+    ''' Datacenter Extension Functions
+    '''
 
     def ex_create_datacenter(self, name, region="DEFAULT"):
         action = 'createDataCenter'
@@ -430,10 +517,10 @@ class ProfitBricksNodeDriver(NodeDriver):
                             'region': region}
                         )
 
-    def _to_images(self, object):
-        return [self._to_image(image) for image in object.findall('.//return')]
+    def _to_images(self, object, region=None):
+        return [self._to_image(image, region) for image in object.findall('.//return')]
 
-    def _to_image(self, image):
+    def _to_image(self, image, region=None):
         elements = list(image.iter())
         image_id = elements[0].find('imageId').text
         image_name = elements[0].find('imageName').text
@@ -443,7 +530,7 @@ class ProfitBricksNodeDriver(NodeDriver):
         memory_hotpluggable = elements[0].find('memoryHotpluggable').text
         os_type = elements[0].find('osType').text
         public = elements[0].find('public').text
-        region = elements[0].find('region').text
+        image_region = elements[0].find('region').text
         writeable = elements[0].find('writeable').text
 
         return NodeImage(id=image_id,
@@ -456,7 +543,68 @@ class ProfitBricksNodeDriver(NodeDriver):
                                 'memory_hotpluggable': memory_hotpluggable,
                                 'os_type': os_type,
                                 'public': public,
-                                'region': region,
+                                'region': image_region,
                                 'writeable': writeable
                             }
                         )
+
+    def _to_nodes(self, object):
+        return [self._to_node(n) for n in object.findall('.//return')]
+
+    def _to_node(self, node):
+        """
+        Convert the request into a node Node
+        """
+        elements = list(node.iter())
+        datacenter_id = elements[0].find('dataCenterId').text
+        datacenter_version = elements[0].find('dataCenterVersion').text
+        node_id = elements[0].find('serverId').text
+        node_name = elements[0].find('serverName').text
+        cores = elements[0].find('cores').text
+        ram = elements[0].find('ram').text
+        internet_access = elements[0].find('internetAccess').text
+        provisioning_state = elements[0].find('provisioningState').text
+        virtual_machine_state = elements[0].find('virtualMachineState').text
+        creation_time = elements[0].find('creationTime').text
+        last_modification_time = elements[0].find('lastModificationTime').text
+        os_type = elements[0].find('osType').text
+        availability_zone = elements[0].find('availabilityZone').text
+
+        public_ips = []
+        private_ips = []
+
+        if ET.iselement(elements[0].find('nics')):
+            for nic in elements[0].findall('.//nics'):
+                n_elements = list(nic.iter())
+                if ET.iselement(n_elements[0].find('ips')):
+                    ip = n_elements[0].find('ips').text
+                    if is_private_subnet(ip):
+                        private_ips.append(ip)
+                    else:
+                        public_ips.append(ip)
+
+        return Node(
+            id=node_id,
+            name=node_name,
+            state=self.NODE_STATE_MAP.get(
+                virtual_machine_state, NodeState.UNKNOWN),
+            public_ips=public_ips,
+            private_ips=private_ips,
+            driver=self.connection.driver,
+            extra={
+                'datacenter_id': datacenter_id,
+                'datacenter_version': datacenter_version,
+                'provisioning_state': self.PROVISIONING_STATE.get(
+                    provisioning_state, NodeState.UNKNOWN),
+                'creation_time': creation_time,
+                'last_modification_time': last_modification_time,
+                'os_type': os_type,
+                'availability_zone': availability_zone})
+
+    def _to_location(self, data):
+
+        return NodeLocation(
+            id=data["region"],
+            name=data["region"],
+            country=data["country"],
+            driver=self.connection.driver)

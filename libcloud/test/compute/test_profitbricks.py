@@ -40,6 +40,76 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
         ProfitBricks.connectionCls.conn_classes = (None, ProfitBricksMockHttp)
         self.driver = ProfitBricks(self.USER_ID, self.KEY )
 
+    ''' Server Function Tests
+    '''
+    def test_list_nodes(self):
+        nodes = self.driver.list_nodes()
+
+        self.assertEqual(len(nodes), 3)
+
+        node = nodes[0]
+        self.assertEquals(node.id,"c8e57d7b-e731-46ad-a913-1828c0562246")
+        self.assertEquals(node.name,"server001")
+        self.assertEquals(node.state, 0)
+        self.assertEquals(node.public_ips, ['162.254.25.197'])
+        self.assertEquals(node.private_ips, ['10.10.108.12', '10.13.198.11'])
+        self.assertEquals(node.extra['datacenter_id'], "e1e8ec0d-b47f-4d39-a91b-6e885483c899")
+        self.assertEquals(node.extra['datacenter_version'], "5")
+        self.assertEquals(node.extra['provisioning_state'], 0)
+        self.assertEquals(node.extra['creation_time'], "2014-07-14T20:52:20.839Z")
+        self.assertEquals(node.extra['last_modification_time'], "2014-07-14T22:11:09.324Z")
+        self.assertEquals(node.extra['os_type'], "LINUX")
+        self.assertEquals(node.extra['availability_zone'], "ZONE_1")
+
+    def test_reboot_node(self):
+        node = type('Node', (object,), 
+            dict(id="c8e57d7b-e731-46ad-a913-1828c0562246"))
+        reboot = self.driver.reboot_node(node=node)
+
+        self.assertTrue(reboot)
+
+    def test_ex_stop_node(self):
+        node = type('Node', (object,), 
+            dict(id="c8e57d7b-e731-46ad-a913-1828c0562246"))
+        stop = self.driver.ex_stop_node(node=node)
+
+        self.assertTrue(stop)
+
+    def test_ex_start_node(self):
+        node = type('Node', (object,), 
+            dict(id="c8e57d7b-e731-46ad-a913-1828c0562246"))
+        start = self.driver.ex_start_node(node=node)
+
+        self.assertTrue(start)
+
+    def test_destroy_node(self):
+        node = type('Node', (object,), 
+            dict(id="c8e57d7b-e731-46ad-a913-1828c0562246"))
+        destroy = self.driver.destroy_node(node=node)
+
+        self.assertTrue(destroy)
+
+    ''' Image Function Tests
+    '''
+    def test_list_images(self):
+        images = self.driver.list_images()
+
+        self.assertEqual(len(images), 3)
+
+        image = images[0]
+        self.assertEqual(image.extra['cpu_hotpluggable'], "false")
+        self.assertEqual(image.id, "03b6c3e7-f2ad-11e3-a036-52540066fee9")
+        self.assertEqual(image.name, "windows-2012-r2-server-2014-06")
+        self.assertEqual(image.extra['image_size'], "11264")
+        self.assertEqual(image.extra['image_type'], "HDD")
+        self.assertEqual(image.extra['memory_hotpluggable'], "false")
+        self.assertEqual(image.extra['os_type'], "WINDOWS")
+        self.assertEqual(image.extra['public'], "true")
+        self.assertEqual(image.extra['region'], "NORTH_AMERICA")
+        self.assertEqual(image.extra['writeable'], "true")
+
+    ''' Datacenter Function Tests
+    '''
     def test_ex_create_datacenter(self):
     	datacenter = self.driver.ex_create_datacenter(name="StackPointCloud")
 
@@ -91,6 +161,33 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
 
     	self.assertTrue(update)
 
+    def test_list_locations(self):
+        locations = self.driver.list_locations()
+        self.assertEqual(len(locations), 2)
+
+        locationNamesResult = list(a.name for a in locations)
+        locationNamesExpected = ['NORTH_AMERICA','EUROPE']
+
+        self.assertListEqual(locationNamesResult, locationNamesExpected)
+
+        matchedLocation = next(location for location in locations
+                               if location.name == 'NORTH_AMERICA')
+
+    ''' Availability Zone Tests
+    '''
+
+    def test_ex_list_availability_zones(self):
+        zones = self.driver.ex_list_availability_zones()
+        self.assertEqual(len(zones), 3)
+
+        zoneNamesResult = list(a.name for a in zones)
+        zoneNamesExpected = ['AUTO', 'ZONE_2','ZONE_1']
+
+        self.assertListEqual(zoneNamesResult, zoneNamesExpected)
+
+        matchedLocation = next(zone for zone in zones
+                               if zone.name == 'ZONE_1')
+
 class ProfitBricksMockHttp(MockHttp):
 
     fixtures = ComputeFileFixtures('profitbricks')
@@ -118,6 +215,30 @@ class ProfitBricksMockHttp(MockHttp):
     def _1_2_updateDataCenter(self, method, url, body, headers):
     	body = self.fixtures.load('ex_update_datacenter.xml')
     	return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_getAllImages(self, method, url, body, headers):
+        body = self.fixtures.load('list_images.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_getAllServers(self, method, url, body, headers):
+        body = self.fixtures.load('list_nodes.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_resetServer(self, method, url, body, headers):
+        body = self.fixtures.load('reboot_node.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_stopServer(self, method, url, body, headers):
+        body = self.fixtures.load('ex_stop_node.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_startServer(self, method, url, body, headers):
+        body = self.fixtures.load('ex_start_node.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_deleteServer(self, method, url, body, headers):
+        body = self.fixtures.load('destroy_node.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
 if __name__ == '__main__':
     sys.exit(unittest.main())
