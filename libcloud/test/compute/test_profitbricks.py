@@ -89,6 +89,118 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
 
         self.assertTrue(destroy)
 
+    def test_ex_update_node(self):
+        node = type('Node', (object,), 
+            dict(id="c8e57d7b-e731-46ad-a913-1828c0562246"))
+
+        zone = type('ExProfitBricksAvailabilityZone', (object,),
+            dict(name="ZONE_2"))
+
+        update = self.driver.ex_update_node(node=node, ram=2048, cores=2, name="server002", availability_zone=zone)
+
+        self.assertTrue(update)
+
+    ''' Volume Function Tests
+    '''
+    def test_list_volumes(self):
+        volumes = self.driver.list_volumes()
+
+        self.assertEqual(len(volumes), 4)
+
+        volume = volumes[0]
+        self.assertEquals(volume.id,"453582cf-8d54-4ec8-bc0b-f9962f7fd232")
+        self.assertEquals(volume.name,"storage001")
+        self.assertEquals(volume.size, 50)
+        self.assertEquals(volume.extra['server_id'], "ebee7d83-912b-42f1-9b62-b953351a7e29")
+        self.assertEquals(volume.extra['provisioning_state'], 0)
+        self.assertEquals(volume.extra['creation_time'], "2014-07-15T03:19:38.252Z")
+        self.assertEquals(volume.extra['last_modification_time'], "2014-07-15T03:28:58.724Z")
+        self.assertEquals(volume.extra['image_id'], "d2f627c4-0289-11e4-9f63-52540066fee9")
+        self.assertEquals(volume.extra['image_name'], "CentOS-6-server-2014-07-01")
+
+    def test_create_volume(self):
+        datacenter = type('Datacenter', (object,), 
+            dict(id="8669a69f-2274-4520-b51e-dbdf3986a476"))
+
+        image = type('NodeImage', (object,),
+            dict(id="cd59b162-0289-11e4-9f63-52540066fee9"))
+        
+        create = self.driver.create_volume(name="StackPointCloudStorage001",
+            size=50,ex_datacenter=datacenter,ex_image=image)
+
+        self.assertTrue(create)
+
+    def test_attach_volume_general(self):
+        volume = type('StorageVolume', (object,), 
+            dict(id="8669a69f-2274-4520-b51e-dbdf3986a476"))
+
+        node = type('Node', (object,),
+            dict(id="cd59b162-0289-11e4-9f63-52540066fee9"))
+        
+        attach = self.driver.attach_volume(node=node, volume=volume, device=None, bus_type=None)
+
+        self.assertTrue(attach)
+
+    def test_attach_volume_device_defined(self):
+        volume = type('StorageVolume', (object,), 
+            dict(id="8669a69f-2274-4520-b51e-dbdf3986a476"))
+
+        node = type('Node', (object,),
+            dict(id="cd59b162-0289-11e4-9f63-52540066fee9"))
+        
+        attach = self.driver.attach_volume(node=node, volume=volume, device=1, bus_type=None)
+
+        self.assertTrue(attach)
+
+    def test_attach_volume_bus_type_defined(self):
+        volume = type('StorageVolume', (object,), 
+            dict(id="8669a69f-2274-4520-b51e-dbdf3986a476"))
+
+        node = type('Node', (object,),
+            dict(id="cd59b162-0289-11e4-9f63-52540066fee9"))
+        
+        attach = self.driver.attach_volume(node=node, volume=volume, device=None, bus_type="IDE")
+
+        self.assertTrue(attach)
+
+    def test_attach_volume_options_defined(self):
+        volume = type('StorageVolume', (object,), 
+            dict(id="8669a69f-2274-4520-b51e-dbdf3986a476"))
+
+        node = type('Node', (object,),
+            dict(id="cd59b162-0289-11e4-9f63-52540066fee9"))
+        
+        attach = self.driver.attach_volume(node=node, volume=volume, device=1, bus_type="IDE")
+
+        self.assertTrue(attach)
+
+    def test_detach_volume(self):
+        volume = type('StorageVolume', (object,), 
+            dict(id="8669a69f-2274-4520-b51e-dbdf3986a476"))
+
+        node = type('Node', (object,),
+            dict(id="cd59b162-0289-11e4-9f63-52540066fee9"))
+        
+        attach = self.driver.detach_volume(node=node, volume=volume)
+
+        self.assertTrue(attach)
+
+    def test_destroy_volume(self):
+        volume = type('StorageVolume', (object,), 
+            dict(id="8669a69f-2274-4520-b51e-dbdf3986a476"))
+
+        destroy = self.driver.destroy_volume(volume=volume)
+
+        self.assertTrue(destroy)
+
+    def test_update_volume(self):
+        volume = type('StorageVolume', (object,), 
+            dict(id="8669a69f-2274-4520-b51e-dbdf3986a476"))
+
+        destroy = self.driver.ex_update_volume(volume=volume)
+
+        self.assertTrue(destroy)
+
     ''' Image Function Tests
     '''
     def test_list_images(self):
@@ -188,6 +300,43 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
         matchedLocation = next(zone for zone in zones
                                if zone.name == 'ZONE_1')
 
+    ''' Interface Tests
+    '''
+
+    def test_ex_list_interfaces(self):
+        interfaces = self.driver.ex_list_network_interfaces()
+
+        self.assertEqual(len(interfaces), 3)
+
+        interface = interfaces[0]
+        self.assertEquals(interface.id,"6b38a4f3-b851-4614-9e3a-5ddff4727727")
+        self.assertEquals(interface.name, "StackPointCloud")
+        self.assertEquals(interface.state, 0)
+        self.assertEquals(interface.extra['server_id'], "234f0cf9-1efc-4ade-b829-036456584116")
+        self.assertEquals(interface.extra['lan_id'], '3')
+        self.assertEquals(interface.extra['internet_access'], 'false')
+        self.assertEquals(interface.extra['mac_address'], "02:01:40:47:90:04")
+        self.assertEquals(interface.extra['dhcp_active'], "true")
+        self.assertEquals(interface.extra['gateway_ip'], None)                 
+        self.assertEquals(interface.extra['ips'], ['10.14.96.11', '10.14.96.11', '10.14.96.11'])
+
+    def test_ex_create_network_interface(self):
+        node = type('Node', (object,),
+            dict(id="cd59b162-0289-11e4-9f63-52540066fee9"))
+        
+        attach = self.driver.ex_create_network_interface(node=node)
+
+        self.assertTrue(attach)
+
+    def test_ex_destroy_network_interface(self):
+        network_interface = type('ProfitBricksNetworkInterface', (object,),
+            dict(id="cd59b162-0289-11e4-9f63-52540066fee9"))
+        
+        destroy = self.driver.ex_destroy_network_interface(
+            network_interface=network_interface)
+
+        self.assertTrue(destroy)
+
 class ProfitBricksMockHttp(MockHttp):
 
     fixtures = ComputeFileFixtures('profitbricks')
@@ -238,6 +387,46 @@ class ProfitBricksMockHttp(MockHttp):
 
     def _1_2_deleteServer(self, method, url, body, headers):
         body = self.fixtures.load('destroy_node.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_getAllStorages(self, method, url, body, headers):
+        body = self.fixtures.load('list_volumes.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_createStorage(self, method, url, body, headers):
+        body = self.fixtures.load('create_volume.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_connectStorageToServer(self, method, url, body, headers):
+        body = self.fixtures.load('attach_volume.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_disconnectStorageFromServer(self, method, url, body, headers):
+        body = self.fixtures.load('detach_volume.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_deleteStorage(self, method, url, body, headers):
+        body = self.fixtures.load('destroy_volume.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_updateStorage(self, method, url, body, headers):
+        body = self.fixtures.load('ex_update_volume.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_updateServer(self, method, url, body, headers):
+        body = self.fixtures.load('ex_update_node.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_getAllNic(self, method, url, body, headers):
+        body = self.fixtures.load('ex_list_network_interfaces.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_createNic(self, method, url, body, headers):
+        body = self.fixtures.load('ex_list_network_interfaces.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_deleteNic(self, method, url, body, headers):
+        body = self.fixtures.load('ex_destroy_network_interface.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
 if __name__ == '__main__':

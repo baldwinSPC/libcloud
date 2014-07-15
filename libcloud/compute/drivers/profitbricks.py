@@ -227,6 +227,17 @@ class Datacenter(UuidMixin):
         return (('<Datacenter: id=%s, name=%s, datacenter_version=%s, driver=%s> ...>')
                 % (self.id, self.name, self.datacenter_version, self.driver.name))
 
+class ProfitBricksNetworkInterface(object):
+    def __init__(self, id, name, state, extra=None):
+        self.id = id
+        self.name = name
+        self.state = state
+        self.extra = extra or {}
+
+    def __repr__(self):
+        return (('<ProfitBricksNetworkInterface: id=%s, name=%s')
+                % (self.id, self.name))
+
 class ExProfitBricksAvailabilityZone(object):
     """
     Extension class which stores information about a ProfitBricks 
@@ -336,27 +347,75 @@ class ProfitBricksNodeDriver(NodeDriver):
     """
 
     def list_volumes(self, node=None):
-        return
+        action = 'getAllStorages'
+        body = {'action': action}
 
-    def attach_volume(self):
-        raise NotImplementedError(
-            'attach_volume is not supported '
-            'at this time.')
+        return self._to_volumes(self.connection.request(action=action,data=body,method='POST').object)
 
-    def create_volume(self):
-        raise NotImplementedError(
-            'create_volume is not supported '
-            'at this time.')
+    def attach_volume(self, node, volume, device=None, bus_type=None):
+        action = 'connectStorageToServer'
+        body = {'action': action,
+                'request': 'true',
+                'storageId': volume.id,
+                'serverId': node.id,
+                'busType': bus_type,
+                'deviceNumber': str(device)
+                }
 
-    def detach_volume(self):
-        raise NotImplementedError(
-            'detach_volume is not supported '
-            'at this time.')
+        self.connection.request(action=action,data=body,method='POST').object
 
-    def destroy_volume(self):
-        raise NotImplementedError(
-            'destroy_volume is not supported '
-            'at this time.')
+        return True
+
+    def create_volume(self, name, size, ex_datacenter=None, ex_image=None, ex_password=None):
+        action = 'createStorage'
+        body = {'action': action,
+                'request': 'true',
+                'size': str(size),
+                'storageName': name,
+                'mountImageId': ex_image.id,
+                'dataCenterId': ex_datacenter.id
+                }
+
+        if ex_password:
+            body['profitBricksImagePassword'] = ex_password
+
+        return self._to_volumes(self.connection.request(action=action,data=body,method='POST').object)
+
+    def detach_volume(self, node, volume):
+        action = 'disconnectStorageFromServer'
+        body = {'action': action,
+                'storageId': volume.id,
+                'serverId': node.id
+                }
+
+        self.connection.request(action=action,data=body,method='POST').object
+
+        return True
+
+    def destroy_volume(self, volume):
+        action = 'deleteStorage'
+        body = {'action': action,
+                'storageId': volume.id}
+
+        self.connection.request(action=action,data=body,method='POST').object
+
+        return True
+
+    def ex_update_volume(self, volume, storage_name=None, size=None):
+        action = 'updateStorage'
+        body = {'action': action,
+                'request': 'true',
+                'storageId': volume.id
+                }
+
+        if storage_name:
+            body['storageName'] = storage_name
+        if size:
+            body['size'] = str(size)
+
+        self.connection.request(action=action,data=body,method='POST').object
+        
+        return True
 
     """ Extension Functions
     """
@@ -395,11 +454,33 @@ class ProfitBricksNodeDriver(NodeDriver):
 
         return availability_zones
 
-    def ex_get_server(self, node):
+    def ex_get_node(self, node):
         return
 
-    def ex_update_server(self, node):
-        return
+    def ex_update_node(self, node, name=None, cores=None, 
+        ram=None, availability_zone=None):
+        action = 'updateServer'
+
+        body = {'action': action,
+                'request': 'true',
+                'serverId': node.id
+                }
+
+        if name:
+            body['serverName'] = name
+
+        if cores:
+            body['cores'] = str(cores)
+
+        if ram:
+            body['ram'] = str(ram)
+
+        if availability_zone:
+            body['availabilityZone'] = availability_zone.name
+
+        self.connection.request(action=action,data=body,method='POST').object
+
+        return True
 
     ''' Datacenter Extension Functions
     '''
@@ -459,24 +540,55 @@ class ProfitBricksNodeDriver(NodeDriver):
                 'dataCenterId': datacenter.id
                 }
 
-        request = self.connection.request(action=action,data=body,method='POST').object
+        self.connection.request(action=action,data=body,method='POST').object
         
         return True
 
+    ''' Network Interface Extension Functions
+    '''
+
     def ex_list_network_interfaces(self):
-        return
+        action = 'getAllNic'
+        body = {'action': action}
+
+        return self._to_interfaces(self.connection.request(action=action,data=body,method='POST').object)
 
     def ex_describe_network_interface(self):
         return
 
-    def ex_create_network_interface(self):
-        return
+    def ex_create_network_interface(self, node, 
+        lan_id=None, ip=None, nic_name=None, dhcp_active=True):
+        action = 'createNic'
+        body = {'action': action,
+                'request': 'true',
+                'serverId': node.id,
+                'dhcpActive': str(dhcp_active)
+                }
+
+        if lan_id:
+            body['lanId'] = str(lan_id)
+        else:
+            body['lanId'] = str(1)
+
+        if ip:
+            body['ip'] = ip
+
+        if nic_name:
+            body['nicName'] = nic_name
+
+        return self._to_interfaces(self.connection.request(action=action,data=body,method='POST').object)
 
     def ex_update_network_interface(self):
         return
 
-    def ex_destroy_network_interface(self):
-        return
+    def ex_destroy_network_interface(self, network_interface):
+        action = 'deleteNic'
+        body = {'action': action,
+                'nicId': network_interface.id}
+
+        self.connection.request(action=action,data=body,method='POST').object
+
+        return True
 
     """ Snapshot Functions Not Implemented
     """
@@ -600,6 +712,145 @@ class ProfitBricksNodeDriver(NodeDriver):
                 'last_modification_time': last_modification_time,
                 'os_type': os_type,
                 'availability_zone': availability_zone})
+
+    def _to_volumes(self, object):
+        return [self._to_volume(volume) for volume in object.findall('.//return')]
+
+    def _to_volume(self, volume, node=None):
+        elements = list(volume.iter())
+
+        if node:
+            if node.id == elements[0].find('server_id').text:
+                print('Filtering by nodeid ' + node.id)
+
+        datacenter_id = elements[0].find('dataCenterId').text
+        datacenter_version = elements[0].find('dataCenterVersion').text
+        storage_id = elements[0].find('storageId').text
+
+        if ET.iselement(elements[0].find('storageName')):
+            storage_name = elements[0].find('storageName').text
+        else:
+            storage_name = None
+
+        if ET.iselement(elements[0].find('serverIds')):
+            server_id = elements[0].find('serverIds').text
+        else:
+            server_id = None
+
+        if ET.iselement(elements[0].find('creationTime')):
+            creation_time = elements[0].find('creationTime').text
+        else:
+            creation_time = None
+
+        if ET.iselement(elements[0].find('lastModificationTime')):
+            last_modification_time = elements[0].find('lastModificationTime').text
+        else:
+            last_modification_time = None
+
+        if ET.iselement(elements[0].find('provisioningState')):
+            provisioning_state = elements[0].find('provisioningState').text
+        else:
+            provisioning_state = None
+
+        if ET.iselement(elements[0].find('size')):
+            size = elements[0].find('size').text
+        else:
+            size = 0
+
+        if ET.iselement(elements[0].find('mountImage')):
+            image_id = elements[0].find('mountImage')[0].text
+        else:
+            image_id = None
+
+        if ET.iselement(elements[0].find('mountImage')):
+            image_name = elements[0].find('mountImage')[1].text
+        else:
+            image_name = None
+
+        return StorageVolume(id=storage_id, 
+                            name=storage_name,
+                            size=int(size), 
+                            driver=self.connection.driver,
+                            extra={
+                                    'creation_time': creation_time,
+                                    'last_modification_time': last_modification_time,
+                                    'provisioning_state': self.PROVISIONING_STATE.get(
+                                        provisioning_state, NodeState.UNKNOWN),
+                                    'server_id': server_id,
+                                    'image_id': image_id,
+                                    'image_name': image_name
+                                }
+                            )
+
+    def _to_interfaces(self, object):
+        return [self._to_interface(interface) for interface in object.findall('.//return')]
+
+    def _to_interface(self, interface):
+        elements = list(interface.iter())
+
+        nic_id = elements[0].find('nicId').text
+        
+        if ET.iselement(elements[0].find('nicName')):
+            nic_name = elements[0].find('nicName').text
+        else:
+            nic_name = None
+
+        if ET.iselement(elements[0].find('serverId')):
+            server_id = elements[0].find('serverId').text
+        else:
+            server_id = None
+
+        if ET.iselement(elements[0].find('lanId')):
+            lan_id = elements[0].find('lanId').text
+        else:
+            lan_id = None
+
+        if ET.iselement(elements[0].find('internetAccess')):
+            internet_access = elements[0].find('internetAccess').text
+        else:
+            internet_access = None
+
+        if ET.iselement(elements[0].find('macAddress')):
+            mac_address = elements[0].find('macAddress').text
+        else:
+            mac_address = None
+
+        if ET.iselement(elements[0].find('dhcpActive')):
+            dhcp_active = elements[0].find('dhcpActive').text
+        else:
+            dhcp_active = None
+
+        if ET.iselement(elements[0].find('gatewayIp')):
+            gateway_ip = elements[0].find('gatewayIp').text
+        else:
+            gateway_ip = None
+
+        if ET.iselement(elements[0].find('provisioningState')):
+            provisioning_state = elements[0].find('provisioningState').text
+        else:
+            provisioning_state = None
+
+        ips = []
+
+        if ET.iselement(elements[0].find('ips')):
+            for ip in elements[0].findall('.//ips'):
+                ip = elements[0].find('ips').text
+                ips.append(ip)
+                
+        return ProfitBricksNetworkInterface(id=nic_id, 
+                            name=nic_name,
+                            state=self.PROVISIONING_STATE.get(
+                                        provisioning_state, NodeState.UNKNOWN),
+                            extra={
+                                    'server_id': server_id,
+                                    'lan_id': lan_id,
+                                    'internet_access': internet_access,
+                                    'mac_address': mac_address,
+                                    'dhcp_active': dhcp_active,
+                                    'gateway_ip': gateway_ip,
+                                    'ips': ips
+                                }
+                            )
 
     def _to_location(self, data):
 
