@@ -38,98 +38,6 @@ from libcloud.common.types import LibcloudError
 
 __version__ = '1.0.0'
 
-"""
-ProfitBricks is unique in that they allow the user to define all aspects
-of the instance size, i.e. disk size, core size, and memory size. 
-
-These are instance types that match up with what other providers support.
-
-You can configure disk size, core size, and memory size using the ex_
-parameters on the create_node method. 
-"""
-PROFITBRICKS_COMPUTE_INSTANCE_TYPES = {
-    'A0': {
-        'id': 'A0',
-        'name': 'ExtraSmall Instance',
-        'ram': 768,
-        'disk': 127,
-        'bandwidth': None,
-        'price': '0.02',
-        'max_data_disks': 1,
-        'cores': 'Shared'
-    },
-    'A1': {
-        'id': 'A1',
-        'name': 'Small Instance',
-        'ram': 1792,
-        'disk': 127,
-        'bandwidth': None,
-        'price': '0.09',
-        'max_data_disks': 2,
-        'cores': 1
-    },
-    'A2': {
-        'id': 'A2',
-        'name': 'Medium Instance',
-        'ram': 3584,
-        'disk': 127,
-        'bandwidth': None,
-        'price': '0.18',
-        'max_data_disks': 4,
-        'cores': 2
-    },
-    'A3': {
-        'id': 'A3',
-        'name': 'Large Instance',
-        'ram': 7168,
-        'disk': 127,
-        'bandwidth': None,
-        'price': '0.36',
-        'max_data_disks': 8,
-        'cores': 4
-    },
-    'A4': {
-        'id': 'A4',
-        'name': 'ExtraLarge Instance',
-        'ram': 14336,
-        'disk': 127,
-        'bandwidth': None,
-        'price': '0.72',
-        'max_data_disks': 16,
-        'cores': 8
-    },
-    'A5': {
-        'id': 'A5',
-        'name': 'Memory Intensive Instance',
-        'ram': 14336,
-        'disk': 127,
-        'bandwidth': None,
-        'price': '0.40',
-        'max_data_disks': 4,
-        'cores': 2
-    },
-    'A6': {
-        'id': 'A6',
-        'name': 'A6 Instance',
-        'ram': 28672,
-        'disk': 127,
-        'bandwidth': None,
-        'price': '0.80',
-        'max_data_disks': 8,
-        'cores': 4
-    },
-    'A7': {
-        'id': 'A7',
-        'name': 'A7 Instance',
-        'ram': 57344,
-        'disk': 127,
-        'bandwidth': None,
-        'price': '1.60',
-        'max_data_disks': 16,
-        'cores': 8
-    }    
-}
-
 class ProfitBricksException(LibcloudError):
     """
     Exception class for ProfitBricks driver.
@@ -287,7 +195,17 @@ class ProfitBricksNodeDriver(NodeDriver):
         '2': {'name': 'ZONE_1'},
         '3': {'name': 'ZONE_2'},
     }
+    
+    """
+    ProfitBricks is unique in that they allow the user to define all aspects
+    of the instance size, i.e. disk size, core size, and memory size. 
 
+    These are instance types that match up with what other providers support.
+
+    You can configure disk size, core size, and memory size using the ex_
+    parameters on the create_node method. 
+    """
+    
     PROFIT_BRICKS_GENERIC_SIZES = {
         '1': {
             'id': '1',
