@@ -578,8 +578,29 @@ class ProfitBricksNodeDriver(NodeDriver):
 
         return self._to_interfaces(self.connection.request(action=action,data=body,method='POST').object)
 
-    def ex_update_network_interface(self):
-        return
+    def ex_update_network_interface(self, network_interface, name=None, 
+        lan_id=None, ip=None, dhcp_active=None):
+        action = 'updateNic'
+        body = {'action': action,
+                'request': 'true',
+                'nicId': network_interface.id
+                }
+
+        if name:
+            body['nicName'] = name
+
+        if lan_id:
+            body['lanId'] = str(lan_id)
+
+        if ip:
+            body['ip'] = ip
+
+        if dhcp_active is not None:
+            body['dhcpActive'] = str(dhcp_active).lower()
+
+        self.connection.request(action=action,data=body,method='POST').object
+
+        return True
 
     def ex_destroy_network_interface(self, network_interface):
         action = 'deleteNic'

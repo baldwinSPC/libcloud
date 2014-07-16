@@ -324,9 +324,9 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
         node = type('Node', (object,),
             dict(id="cd59b162-0289-11e4-9f63-52540066fee9"))
         
-        attach = self.driver.ex_create_network_interface(node=node)
+        create = self.driver.ex_create_network_interface(node=node)
 
-        self.assertTrue(attach)
+        self.assertTrue(create)
 
     def test_ex_destroy_network_interface(self):
         network_interface = type('ProfitBricksNetworkInterface', (object,),
@@ -336,6 +336,15 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
             network_interface=network_interface)
 
         self.assertTrue(destroy)
+
+    def test_ex_update_network_interface(self):
+        network_interface = type('ProfitBricksNetworkInterface', (object,),
+            dict(id="cd59b162-0289-11e4-9f63-52540066fee9"))
+        
+        create = self.driver.ex_update_network_interface(
+            network_interface=network_interface)
+
+        self.assertTrue(create)
 
 class ProfitBricksMockHttp(MockHttp):
 
@@ -427,6 +436,10 @@ class ProfitBricksMockHttp(MockHttp):
 
     def _1_2_deleteNic(self, method, url, body, headers):
         body = self.fixtures.load('ex_destroy_network_interface.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_2_updateNic(self, method, url, body, headers):
+        body = self.fixtures.load('ex_update_network_interface.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
 if __name__ == '__main__':
