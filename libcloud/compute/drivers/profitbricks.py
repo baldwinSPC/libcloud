@@ -147,7 +147,7 @@ class ProfitBricksResponse():
 class ProfitBricksConnection(ConnectionUserAndKey):
     host = 'api.profitbricks.com'
     responseCls = XmlResponse
-    api_prefix = '/1.2/' # https://api.profitbricks.com/1.2
+    api_prefix = '/1.3/' # https://api.profitbricks.com/1.2
 
 
     def add_default_headers(self, headers):
@@ -238,7 +238,7 @@ class ProfitBricksNetworkInterface(object):
         return (('<ProfitBricksNetworkInterface: id=%s, name=%s')
                 % (self.id, self.name))
 
-class ExProfitBricksAvailabilityZone(object):
+class ProfitBricksAvailabilityZone(object):
     """
     Extension class which stores information about a ProfitBricks 
     availability zone.
@@ -288,11 +288,74 @@ class ProfitBricksNodeDriver(NodeDriver):
         '3': {'name': 'ZONE_2'},
     }
 
+    PROFIT_BRICKS_GENERIC_SIZES = {
+        '1': {
+            'id': '1',
+            'name': 'ExtraSmall Instance',
+            'ram': 1024,
+            'disk': 50,
+            'cores': 1
+        },
+        '2': {
+            'id': '2',
+            'name': 'Small Instance',
+            'ram': 2048,
+            'disk': 50,
+            'cores': 1
+        },
+        '3': {
+            'id': '3',
+            'name': 'Medium Instance',
+            'ram': 3072,
+            'disk': 50,
+            'cores': 2
+        },
+        '4': {
+            'id': '4',
+            'name': 'Large Instance',
+            'ram': 7168,
+            'disk': 50,
+            'cores': 4
+        },
+        '5': {
+            'id': '5',
+            'name': 'ExtraLarge Instance',
+            'ram': 14336,
+            'disk': 50,
+            'cores': 8
+        },
+        '6': {
+            'id': '6',
+            'name': 'Memory Intensive Instance Medium',
+            'ram': 28672,
+            'disk': 50,
+            'cores': 4
+        },
+        '7': {
+            'id': '7',
+            'name': 'Memory Intensive Instance Large',
+            'ram': 57344,
+            'disk': 50,
+            'cores': 8
+        }    
+    }
+
     """ Core Functions    
     """
 
     def list_sizes(self):
-        return
+        """
+        Lists all sizes
+
+        :rtype: ``list`` of :class:`NodeSize`
+        """
+        sizes = []
+
+        for key, values in self.PROFIT_BRICKS_GENERIC_SIZES.items():
+            node_size = self._to_node_size(copy.deepcopy(values))
+            sizes.append(node_size)
+
+        return sizes
 
     def list_images(self, region=None):
         '''
@@ -330,7 +393,17 @@ class ProfitBricksNodeDriver(NodeDriver):
 
         return True
 
-    def create_node(self, ex_cloud_service_name=None, **kwargs):
+    def create_node(self, name, image, size=None, inet_access=None, 
+        volume=None, **kwargs):
+        # TODO:
+        # - user can pass core, memory, and disk to override 
+        #   the 'size' passed in.
+        # - create storage, create server, enable public internet access
+        #   - needs to simulate the other providers as much as possible.
+        # - customer can create a node and pass in a pre-existing 
+        #   volume they want to attach.
+
+
         return
 
     def destroy_node(self, node, remove_attached_disks=None):
@@ -447,15 +520,20 @@ class ProfitBricksNodeDriver(NodeDriver):
         for key, values in self.AVAILABILITY_ZONE.items():
             name = copy.deepcopy(values)["name"]
 
-            availability_zone = ExProfitBricksAvailabilityZone(
+            availability_zone = ProfitBricksAvailabilityZone(
                 name=name
             )
             availability_zones.append(availability_zone)
 
         return availability_zones
 
-    def ex_get_node(self, node):
-        return
+    def ex_describe_node(self, node):
+        action = 'getServer'
+        body = {'action': action,
+                'serverId': node.id
+                }
+
+        return self._to_nodes(self.connection.request(action=action,data=body,method='POST').object)
 
     def ex_update_node(self, node, name=None, cores=None, 
         ram=None, availability_zone=None):
@@ -553,8 +631,13 @@ class ProfitBricksNodeDriver(NodeDriver):
 
         return self._to_interfaces(self.connection.request(action=action,data=body,method='POST').object)
 
-    def ex_describe_network_interface(self):
-        return
+    def ex_describe_network_interface(self, network_interface):
+        action = 'getNic'
+        body = {'action': action,
+                'nicId': network_interface.id
+                }
+
+        return self._to_interfaces(self.connection.request(action=action,data=body,method='POST').object)
 
     def ex_create_network_interface(self, node, 
         lan_id=None, ip=None, nic_name=None, dhcp_active=True):
@@ -606,6 +689,20 @@ class ProfitBricksNodeDriver(NodeDriver):
         action = 'deleteNic'
         body = {'action': action,
                 'nicId': network_interface.id}
+
+        self.connection.request(action=action,data=body,method='POST').object
+
+        return True
+
+    def ex_set_inet_access(self, datacenter, network_interface, internet_access=True):
+        action = 'setInternetAccess'
+
+        body = {'action': action,
+                'datacenterId': datacenter.id,
+                'lanId': network_interface.extra['lan_id'],
+                'internetAccess': str(internet_access).lower(),
+                'networkId': network_interface.id,
+                }
 
         self.connection.request(action=action,data=body,method='POST').object
 
@@ -716,6 +813,36 @@ class ProfitBricksNodeDriver(NodeDriver):
                     else:
                         public_ips.append(ip)
 
+        if ET.iselement(elements[0].find('cpuHotPlug')):
+            cpu_hotpluggable = elements[0].find('cpuHotPlug').text
+        else:
+            cpu_hotpluggable = None
+
+        if ET.iselement(elements[0].find('ramHotPlug')):
+            memory_hotpluggable = elements[0].find('ramHotPlug').text
+        else:
+            memory_hotpluggable = None
+
+        if ET.iselement(elements[0].find('nicHotPlug')):
+            nic_hotpluggable = elements[0].find('nicHotPlug').text
+        else:
+            nic_hotpluggable = None
+
+        if ET.iselement(elements[0].find('nicHotUnPlug')):
+            nic_hot_unpluggable = elements[0].find('nicHotUnPlug').text
+        else:
+            nic_hot_unpluggable = None
+
+        if ET.iselement(elements[0].find('discVirtioHotPlug')):
+            disc_virtio_hotplug = elements[0].find('discVirtioHotPlug').text
+        else:
+            disc_virtio_hotplug = None
+
+        if ET.iselement(elements[0].find('discVirtioHotUnPlug')):
+            disc_virtio_hotunplug = elements[0].find('discVirtioHotUnPlug').text
+        else:
+            disc_virtio_hotunplug = None
+
         return Node(
             id=node_id,
             name=node_name,
@@ -732,7 +859,14 @@ class ProfitBricksNodeDriver(NodeDriver):
                 'creation_time': creation_time,
                 'last_modification_time': last_modification_time,
                 'os_type': os_type,
-                'availability_zone': availability_zone})
+                'availability_zone': availability_zone,
+                'cpu_hotpluggable': cpu_hotpluggable,
+                'memory_hotpluggable': memory_hotpluggable,
+                'nic_hotpluggable': nic_hotpluggable,
+                'nic_hot_unpluggable': nic_hot_unpluggable,
+                'disc_virtio_hotplug': disc_virtio_hotplug,
+                'disc_virtio_hotunplug': disc_virtio_hotunplug
+                })
 
     def _to_volumes(self, object):
         return [self._to_volume(volume) for volume in object.findall('.//return')]
@@ -851,6 +985,16 @@ class ProfitBricksNodeDriver(NodeDriver):
         else:
             provisioning_state = None
 
+        if ET.iselement(elements[0].find('dataCenterId')):
+            datacenter_id = elements[0].find('dataCenterId').text
+        else:
+            datacenter_id = None
+
+        if ET.iselement(elements[0].find('dataCenterVersion')):
+            datacenter_version = elements[0].find('dataCenterVersion').text
+        else:
+            datacenter_version = None
+
         ips = []
 
         if ET.iselement(elements[0].find('ips')):
@@ -863,6 +1007,8 @@ class ProfitBricksNodeDriver(NodeDriver):
                             state=self.PROVISIONING_STATE.get(
                                         provisioning_state, NodeState.UNKNOWN),
                             extra={
+                                    'datacenter_id': datacenter_id,
+                                    'datacenter_version': datacenter_version,
                                     'server_id': server_id,
                                     'lan_id': lan_id,
                                     'internet_access': internet_access,
@@ -880,3 +1026,20 @@ class ProfitBricksNodeDriver(NodeDriver):
             name=data["region"],
             country=data["country"],
             driver=self.connection.driver)
+
+    def _to_node_size(self, data):
+        """
+        Convert the PROFIT_BRICKS_GENERIC_SIZES into NodeSize
+        """
+        
+        return NodeSize(
+            id=data["id"],
+            name=data["name"],
+            ram=data["ram"],
+            disk=data["disk"],
+            bandwidth=None,
+            price=None,
+            driver=self.connection.driver,
+            extra={
+                'cores' : data["cores"]
+            })

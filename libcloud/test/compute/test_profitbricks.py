@@ -61,6 +61,31 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
         self.assertEquals(node.extra['os_type'], "LINUX")
         self.assertEquals(node.extra['availability_zone'], "ZONE_1")
 
+    def test_ex_describe_node(self):
+        node = type('Node', (object,), 
+            dict(id="c8e57d7b-e731-46ad-a913-1828c0562246"))
+
+        describe = self.driver.ex_describe_node(node=node)[0]
+
+        self.assertEquals(describe.id,"c09f4f31-336c-4ad2-9ec7-591778513408")
+        self.assertEquals(describe.name,"server001")
+        self.assertEquals(describe.state, 0)
+        self.assertEquals(describe.public_ips, ['162.254.26.14'])
+        self.assertEquals(describe.private_ips, ['10.10.38.12'])
+        self.assertEquals(describe.extra['datacenter_id'], "a3a2e730-0dc3-47e6-bac6-4c056d5e2aee")
+        self.assertEquals(describe.extra['datacenter_version'], "6")
+        self.assertEquals(describe.extra['provisioning_state'], 0)
+        self.assertEquals(describe.extra['creation_time'], "2014-07-16T18:53:05.109Z")
+        self.assertEquals(describe.extra['last_modification_time'], "2014-07-16T19:57:51.577Z")
+        self.assertEquals(describe.extra['os_type'], "LINUX")
+        self.assertEquals(describe.extra['availability_zone'], "AUTO")
+        self.assertEquals(describe.extra['cpu_hotpluggable'], "true")
+        self.assertEquals(describe.extra['memory_hotpluggable'], "true")
+        self.assertEquals(describe.extra['nic_hotpluggable'], "true")
+        self.assertEquals(describe.extra['nic_hot_unpluggable'], "true")
+        self.assertEquals(describe.extra['disc_virtio_hotplug'], "true")
+        self.assertEquals(describe.extra['disc_virtio_hotunplug'], "true")
+
     def test_reboot_node(self):
         node = type('Node', (object,), 
             dict(id="c8e57d7b-e731-46ad-a913-1828c0562246"))
@@ -346,100 +371,141 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
 
         self.assertTrue(create)
 
+    def test_ex_describe_network_interface(self):
+        network_interface = type('ProfitBricksNetworkInterface', (object,),
+            dict(id="cd59b162-0289-11e4-9f63-52540066fee9"))
+
+        describe = self.driver.ex_describe_network_interface(network_interface=network_interface)[0]
+
+        self.assertEquals(describe.id,"f1c7a244-2fa6-44ee-8fb6-871f337683a3")
+        self.assertEquals(describe.name, None)
+        self.assertEquals(describe.state, 0)
+        self.assertEquals(describe.extra['datacenter_id'], "a3a2e730-0dc3-47e6-bac6-4c056d5e2aee")
+        self.assertEquals(describe.extra['datacenter_version'], "6")
+        self.assertEquals(describe.extra['server_id'], "c09f4f31-336c-4ad2-9ec7-591778513408")
+        self.assertEquals(describe.extra['lan_id'], "1")
+        self.assertEquals(describe.extra['internet_access'], "false")
+        self.assertEquals(describe.extra['mac_address'], "02:01:96:d7:60:e0")
+        self.assertEquals(describe.extra['dhcp_active'], "true")
+        self.assertEquals(describe.extra['gateway_ip'], None)
+        self.assertEquals(describe.extra['ips'], ['10.10.38.12'])
+
+    def test_list_sizes(self):
+        sizes = self.driver.list_sizes()
+
+        self.assertEqual(len(sizes), 7)
+
+        size = sizes[0]
+        self.assertEquals(size.id,"1")
+        self.assertEquals(size.name,"ExtraSmall Instance")
+        self.assertEquals(size.ram, 1024)
+        self.assertEquals(size.disk, 50)
+        self.assertEquals(size.bandwidth, None)
+        self.assertEquals(size.price, None)
+        self.assertEquals(size.extra['cores'], 1)
+
 class ProfitBricksMockHttp(MockHttp):
 
     fixtures = ComputeFileFixtures('profitbricks')
 
-    def _1_2_clearDataCenter(self, method, url, body, headers):
+    def _1_3_clearDataCenter(self, method, url, body, headers):
         body = self.fixtures.load('ex_clear_datacenter.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_createDataCenter(self, method, url, body, headers):
+    def _1_3_createDataCenter(self, method, url, body, headers):
         body = self.fixtures.load('ex_create_datacenter.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_deleteDataCenter(self, method, url, body, headers):
+    def _1_3_deleteDataCenter(self, method, url, body, headers):
         body = self.fixtures.load('ex_destroy_datacenter.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_getDataCenter(self, method, url, body, headers):
+    def _1_3_getDataCenter(self, method, url, body, headers):
         body = self.fixtures.load('ex_describe_datacenter.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_getAllDataCenters(self, method, url, body, headers):
+    def _1_3_getAllDataCenters(self, method, url, body, headers):
     	body = self.fixtures.load('ex_list_datacenters.xml')
     	return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_updateDataCenter(self, method, url, body, headers):
+    def _1_3_updateDataCenter(self, method, url, body, headers):
     	body = self.fixtures.load('ex_update_datacenter.xml')
     	return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_getAllImages(self, method, url, body, headers):
+    def _1_3_getAllImages(self, method, url, body, headers):
         body = self.fixtures.load('list_images.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_getAllServers(self, method, url, body, headers):
+    def _1_3_getAllServers(self, method, url, body, headers):
         body = self.fixtures.load('list_nodes.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_resetServer(self, method, url, body, headers):
+    def _1_3_resetServer(self, method, url, body, headers):
         body = self.fixtures.load('reboot_node.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_stopServer(self, method, url, body, headers):
+    def _1_3_stopServer(self, method, url, body, headers):
         body = self.fixtures.load('ex_stop_node.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_startServer(self, method, url, body, headers):
+    def _1_3_startServer(self, method, url, body, headers):
         body = self.fixtures.load('ex_start_node.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_deleteServer(self, method, url, body, headers):
+    def _1_3_deleteServer(self, method, url, body, headers):
         body = self.fixtures.load('destroy_node.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_getAllStorages(self, method, url, body, headers):
+    def _1_3_getAllStorages(self, method, url, body, headers):
         body = self.fixtures.load('list_volumes.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_createStorage(self, method, url, body, headers):
+    def _1_3_createStorage(self, method, url, body, headers):
         body = self.fixtures.load('create_volume.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_connectStorageToServer(self, method, url, body, headers):
+    def _1_3_connectStorageToServer(self, method, url, body, headers):
         body = self.fixtures.load('attach_volume.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_disconnectStorageFromServer(self, method, url, body, headers):
+    def _1_3_disconnectStorageFromServer(self, method, url, body, headers):
         body = self.fixtures.load('detach_volume.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_deleteStorage(self, method, url, body, headers):
+    def _1_3_deleteStorage(self, method, url, body, headers):
         body = self.fixtures.load('destroy_volume.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_updateStorage(self, method, url, body, headers):
+    def _1_3_updateStorage(self, method, url, body, headers):
         body = self.fixtures.load('ex_update_volume.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_updateServer(self, method, url, body, headers):
+    def _1_3_updateServer(self, method, url, body, headers):
         body = self.fixtures.load('ex_update_node.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_getAllNic(self, method, url, body, headers):
+    def _1_3_getNic(self, method, url, body, headers):
+        body = self.fixtures.load('ex_describe_network_interface.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_3_getAllNic(self, method, url, body, headers):
         body = self.fixtures.load('ex_list_network_interfaces.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_createNic(self, method, url, body, headers):
+    def _1_3_createNic(self, method, url, body, headers):
         body = self.fixtures.load('ex_list_network_interfaces.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_deleteNic(self, method, url, body, headers):
+    def _1_3_deleteNic(self, method, url, body, headers):
         body = self.fixtures.load('ex_destroy_network_interface.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
-    def _1_2_updateNic(self, method, url, body, headers):
+    def _1_3_updateNic(self, method, url, body, headers):
         body = self.fixtures.load('ex_update_network_interface.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_3_getServer(self, method, url, body, headers):
+        body = self.fixtures.load('ex_describe_node.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
 if __name__ == '__main__':
