@@ -62,29 +62,19 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
         self.assertEquals(node.extra['availability_zone'], "ZONE_1")
 
     def test_ex_describe_node(self):
-        node = type('Node', (object,), 
-            dict(id="c8e57d7b-e731-46ad-a913-1828c0562246"))
+        image = type('NodeImage', (object,), 
+            dict(id="cd59b162-0289-11e4-9f63-52540066fee9", 
+                name="Debian-7-server-2014-07-01"))
+        size = type('NodeSize', (object,),
+            dict(id="2",
+                name="Small Instance",
+                ram=2048,
+                disk=50,
+                extra={'cores': 1}))
 
-        describe = self.driver.ex_describe_node(node=node)[0]
+        node = self.driver.create_node(name="SPC-Server", image=image, size=size)
 
-        self.assertEquals(describe.id,"c09f4f31-336c-4ad2-9ec7-591778513408")
-        self.assertEquals(describe.name,"server001")
-        self.assertEquals(describe.state, 0)
-        self.assertEquals(describe.public_ips, ['162.254.26.14'])
-        self.assertEquals(describe.private_ips, ['10.10.38.12'])
-        self.assertEquals(describe.extra['datacenter_id'], "a3a2e730-0dc3-47e6-bac6-4c056d5e2aee")
-        self.assertEquals(describe.extra['datacenter_version'], "6")
-        self.assertEquals(describe.extra['provisioning_state'], 0)
-        self.assertEquals(describe.extra['creation_time'], "2014-07-16T18:53:05.109Z")
-        self.assertEquals(describe.extra['last_modification_time'], "2014-07-16T19:57:51.577Z")
-        self.assertEquals(describe.extra['os_type'], "LINUX")
-        self.assertEquals(describe.extra['availability_zone'], "AUTO")
-        self.assertEquals(describe.extra['cpu_hotpluggable'], "true")
-        self.assertEquals(describe.extra['memory_hotpluggable'], "true")
-        self.assertEquals(describe.extra['nic_hotpluggable'], "true")
-        self.assertEquals(describe.extra['nic_hot_unpluggable'], "true")
-        self.assertEquals(describe.extra['disc_virtio_hotplug'], "true")
-        self.assertEquals(describe.extra['disc_virtio_hotunplug'], "true")
+        self.assertEquals(node[0].id,"7b18b85f-cc93-4c2d-abcc-5ce732d35750")
 
     def test_reboot_node(self):
         node = type('Node', (object,), 
@@ -142,6 +132,7 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
         self.assertEquals(volume.extra['last_modification_time'], "2014-07-15T03:28:58.724Z")
         self.assertEquals(volume.extra['image_id'], "d2f627c4-0289-11e4-9f63-52540066fee9")
         self.assertEquals(volume.extra['image_name'], "CentOS-6-server-2014-07-01")
+        self.assertEquals(volume.extra['datacenter_id'], "06eac419-c2b3-4761-aeb9-10efdd2cf292")
 
     def test_create_volume(self):
         datacenter = type('Datacenter', (object,), 
@@ -226,6 +217,17 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
 
         self.assertTrue(destroy)
 
+    def test_ex_describe_volume(self):
+        volume = type('StorageVolume', (object,),
+            dict(id="8669a69f-2274-4520-b51e-dbdf3986a476"))
+
+        describe = self.driver.ex_describe_volume(volume=volume)
+
+        self.assertEqual(describe[0].id, "00d0b9e7-e016-456f-85a0-517aa9a34bf5")
+        self.assertEqual(describe[0].size, 50)
+        self.assertEqual(describe[0].name, "StackPointCloud-Volume")
+        self.assertEqual(describe[0].extra['provisioning_state'], 0)
+
     ''' Image Function Tests
     '''
     def test_list_images(self):
@@ -248,10 +250,10 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
     ''' Datacenter Function Tests
     '''
     def test_ex_create_datacenter(self):
-    	datacenter = self.driver.ex_create_datacenter(name="StackPointCloud")
+    	datacenter = self.driver.ex_create_datacenter(name="StackPointCloud",location="us/la")
 
-    	self.assertEqual(datacenter[0].id, '625f3dc8-4061-422d-b633-9efebe4344d9')
-    	self.assertEqual(datacenter[0].extra['region'], 'EUROPE')
+    	self.assertEqual(datacenter[0].id, '0c793dd1-d4cd-4141-86f3-8b1a24b2d604')
+    	self.assertEqual(datacenter[0].extra['location'], 'us/las')
     	self.assertEqual(datacenter[0].datacenter_version, '1')
 
     def test_ex_destroy_datacenter(self):
@@ -266,10 +268,10 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
     		dict(id="d96dfafc-9a8c-4c0e-8a0c-857a15db572d"))
     	describe = self.driver.ex_describe_datacenter(datacenter=datacenter)
 
-    	self.assertEqual(describe[0].id, 'd96dfafc-9a8c-4c0e-8a0c-857a15db572d')
+    	self.assertEqual(describe[0].id, 'a3e6f83a-8982-4d6a-aebc-60baf5755ede')
     	self.assertEqual(describe[0].name, 'StackPointCloud')
     	self.assertEqual(describe[0].datacenter_version, '1')
-    	self.assertEqual(describe[0].extra['region'], 'NORTH_AMERICA')
+    	self.assertEqual(describe[0].extra['location'], 'us/las')
     	self.assertEqual(describe[0].extra['provisioning_state'], 'AVAILABLE')
 
     def test_ex_clear_datacenter(self):
@@ -282,10 +284,10 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
     def test_ex_list_datacenters(self):
     	datacenters = self.driver.ex_list_datacenters()
 
-        self.assertEqual(len(datacenters), 3)
+        self.assertEqual(len(datacenters), 2)
 
         dc1 = datacenters[0]
-        self.assertEquals(dc1.id,"6571ecd4-8602-4692-ae14-2f85eedbc403")
+        self.assertEquals(dc1.id,"a3e6f83a-8982-4d6a-aebc-60baf5755ede")
         self.assertEquals(dc1.name,"StackPointCloud")
         self.assertEquals(dc1.datacenter_version,"1")
 
@@ -300,15 +302,15 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
 
     def test_list_locations(self):
         locations = self.driver.list_locations()
-        self.assertEqual(len(locations), 2)
+        self.assertEqual(len(locations), 3)
 
         locationNamesResult = list(a.name for a in locations)
-        locationNamesExpected = ['NORTH_AMERICA','EUROPE']
+        locationNamesExpected = ['us/las', 'de/fkb', 'de/fra']
 
         self.assertListEqual(locationNamesResult, locationNamesExpected)
 
-        matchedLocation = next(location for location in locations
-                               if location.name == 'NORTH_AMERICA')
+        # matchedLocation = next(location for location in locations
+        #                        if location.name == 'us/la')
 
     ''' Availability Zone Tests
     '''
@@ -506,6 +508,14 @@ class ProfitBricksMockHttp(MockHttp):
 
     def _1_3_getServer(self, method, url, body, headers):
         body = self.fixtures.load('ex_describe_node.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_3_getStorage(self, method, url, body, headers):
+        body = self.fixtures.load('ex_describe_volume.xml')
+        return (httplib.OK, body, {}, httplib.responses[httplib.OK])
+
+    def _1_3_createServer(self, method, url, body, headers):
+        body = self.fixtures.load('create_node.xml')
         return (httplib.OK, body, {}, httplib.responses[httplib.OK])
 
 if __name__ == '__main__':

@@ -3,19 +3,16 @@
    <S:Body>
       <ns2:getAllDataCentersResponse xmlns:ns2="http://ws.api.profitbricks.com/">
          <return>
-            <dataCenterId>6571ecd4-8602-4692-ae14-2f85eedbc403</dataCenterId>
+            <dataCenterId>a3e6f83a-8982-4d6a-aebc-60baf5755ede</dataCenterId>
             <dataCenterName>StackPointCloud</dataCenterName>
             <dataCenterVersion>1</dataCenterVersion>
+            <provisioningState>AVAILABLE</provisioningState>
          </return>
          <return>
-            <dataCenterId>0bb0c8e4-5c13-451b-a4ae-bdebaf6b6d67</dataCenterId>
-            <dataCenterName>Gotham</dataCenterName>
+            <dataCenterId>c68f77b8-7ecb-40e9-8b41-79415dffc0f1</dataCenterId>
+            <dataCenterName>XYZ</dataCenterName>
             <dataCenterVersion>2</dataCenterVersion>
-         </return>
-         <return>
-            <dataCenterId>8a3e5387-d1ca-4740-956b-9d3ccf0ebd5e</dataCenterId>
-            <dataCenterName>SPCWestUS</dataCenterName>
-            <dataCenterVersion>1</dataCenterVersion>
+            <provisioningState>AVAILABLE</provisioningState>
          </return>
       </ns2:getAllDataCentersResponse>
    </S:Body>

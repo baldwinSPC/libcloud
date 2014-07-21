@@ -3,12 +3,12 @@
    <S:Body>
       <ns2:getDataCenterResponse xmlns:ns2="http://ws.api.profitbricks.com/">
          <return>
-            <requestId>3310024</requestId>
-            <dataCenterId>d96dfafc-9a8c-4c0e-8a0c-857a15db572d</dataCenterId>
+            <requestId>3719240</requestId>
+            <dataCenterId>a3e6f83a-8982-4d6a-aebc-60baf5755ede</dataCenterId>
             <dataCenterVersion>1</dataCenterVersion>
             <dataCenterName>StackPointCloud</dataCenterName>
             <provisioningState>AVAILABLE</provisioningState>
-            <region>NORTH_AMERICA</region>
+            <location>us/las</location>
          </return>
       </ns2:getDataCenterResponse>
    </S:Body>
