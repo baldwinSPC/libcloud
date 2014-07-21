@@ -15,9 +15,6 @@
 """ProfitBricks Compute driver
 
 """
-# TODO:
-# - add exception and success responses
-
 import httplib
 import base64
 import xml.etree.ElementTree as ET
