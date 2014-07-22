@@ -319,7 +319,7 @@ class ProfitBricksNodeDriver(NodeDriver):
         action = 'getAllImages'
         body = {'action': action}
 
-        return self._to_images(self.connection.request(action=action,data=body,method='POST').object, region)
+        return self._to_images(self.connection.request(action=action,data=body,method='POST').object)
 
     def list_locations(self):
         """
@@ -827,6 +827,22 @@ class ProfitBricksNodeDriver(NodeDriver):
     '''
 
     def ex_create_datacenter(self, name, location):
+        """
+        Creates a datacenter.
+
+        ProfitBricks has a concept of datacenters.
+        These represent buckets into which you 
+        can place various compute resources.
+
+        :param name: The DC name.
+        :type name: : ``str``
+
+        :param location: The DC region.
+        :type location: : ``str``
+
+        :return:    Instance of class ``Datacenter``
+        :rtype:     :class:`Datacenter`
+        """  
         action = 'createDataCenter'
 
         body = {'action': action,
@@ -841,6 +857,14 @@ class ProfitBricksNodeDriver(NodeDriver):
         return self._to_datacenters(self.connection.request(action=action,data=body,method='POST').object)
 
     def ex_destroy_datacenter(self, datacenter):
+        """
+        Destroys a datacenter.
+
+        :param datacenter: The DC you're destroying.
+        :type datacenter: :class:`Datacenter`
+
+        :rtype:     : ``bool``
+        """  
         action = 'deleteDataCenter'
         body = {'action': action,
                 'dataCenterId': datacenter.id
@@ -851,6 +875,16 @@ class ProfitBricksNodeDriver(NodeDriver):
         return True
 
     def ex_describe_datacenter(self, datacenter):
+        """
+        Describes a datacenter.
+
+        :param datacenter: The DC you're destroying.
+        :type datacenter: :class:`Datacenter`
+
+        :return:    Instance of class ``Datacenter``
+        :rtype:     :class:`Datacenter`
+        """  
+
         action = 'getDataCenter'
         body = {'action': action,
                 'dataCenterId': datacenter.id
@@ -859,12 +893,29 @@ class ProfitBricksNodeDriver(NodeDriver):
         return self._to_datacenters(self.connection.request(action=action,data=body,method='POST').object)
 
     def ex_list_datacenters(self):
+        """
+        Lists all datacenters.
+
+        :return:    ``list`` of class ``Datacenter``
+        :rtype:     :class:`Datacenter`
+        """  
         action = 'getAllDataCenters'
         body = {'action': action}
 
         return self._to_datacenters(self.connection.request(action=action,data=body,method='POST').object)
 
     def ex_update_datacenter(self, datacenter, name):
+        """
+        Update a datacenter.
+
+        :param datacenter: The DC you're destroying.
+        :type datacenter: :class:`Datacenter`
+
+        :param name: The DC name.
+        :type name: : ``str``
+
+        :rtype:     : ``bool``
+        """  
         action = 'updateDataCenter'
         body = {'action': action,
                 'request': 'true',
@@ -877,6 +928,16 @@ class ProfitBricksNodeDriver(NodeDriver):
         return True
 
     def ex_clear_datacenter(self, datacenter):
+        """
+        Clear a datacenter.
+
+        This removes all objects in a DC.
+
+        :param datacenter: The DC you're destroying.
+        :type datacenter: :class:`Datacenter`
+
+        :rtype:     : ``bool``
+        """  
         action = 'clearDataCenter'
         body = {'action': action,
                 'dataCenterId': datacenter.id
@@ -890,12 +951,27 @@ class ProfitBricksNodeDriver(NodeDriver):
     '''
 
     def ex_list_network_interfaces(self):
+        """
+        Lists all network interfaces.
+
+        :return:    ``list`` of class ``ProfitBricksNetworkInterface``
+        :rtype:     :class:`ProfitBricksNetworkInterface`
+        """  
         action = 'getAllNic'
         body = {'action': action}
 
         return self._to_interfaces(self.connection.request(action=action,data=body,method='POST').object)
 
     def ex_describe_network_interface(self, network_interface):
+        """
+        Describes a network interface.
+
+        :param network_interface: The NIC you wish to describe.
+        :type network_interface: :class:`ProfitBricksNetworkInterface`
+
+        :return:    Instance of class ``ProfitBricksNetworkInterface``
+        :rtype:     :class:`ProfitBricksNetworkInterface`
+        """  
         action = 'getNic'
         body = {'action': action,
                 'nicId': network_interface.id
@@ -905,6 +981,24 @@ class ProfitBricksNodeDriver(NodeDriver):
 
     def ex_create_network_interface(self, node, 
         lan_id=None, ip=None, nic_name=None, dhcp_active=True):
+        """
+        Creates a network interface.
+
+        :param lan_id: The ID for the LAN.
+        :type lan_id: : ``int``
+
+        :param ip: The IP address for the NIC.
+        :type ip: ``str``
+
+        :param nic_name: The name of the NIC, e.g. PUBLIC.
+        :type nic_name: ``str``
+
+        :param dhcp_active: Set to false to disable.
+        :type dhcp_active: ``bool``
+
+        :return:    Instance of class ``ProfitBricksNetworkInterface``
+        :rtype:     :class:`ProfitBricksNetworkInterface`
+        """  
         action = 'createNic'
         body = {'action': action,
                 'request': 'true',
@@ -927,6 +1021,23 @@ class ProfitBricksNodeDriver(NodeDriver):
 
     def ex_update_network_interface(self, network_interface, name=None, 
         lan_id=None, ip=None, dhcp_active=None):
+        """
+        Updates a network interface.
+
+        :param lan_id: The ID for the LAN.
+        :type lan_id: : ``int``
+
+        :param ip: The IP address for the NIC.
+        :type ip: ``str``
+
+        :param name: The name of the NIC, e.g. PUBLIC.
+        :type name: ``str``
+
+        :param dhcp_active: Set to false to disable.
+        :type dhcp_active: ``bool``
+
+        :rtype:     : ``bool``
+        """  
         action = 'updateNic'
         body = {'action': action,
                 'request': 'true',
@@ -950,6 +1061,15 @@ class ProfitBricksNodeDriver(NodeDriver):
         return True
 
     def ex_destroy_network_interface(self, network_interface):
+        """
+        Destroy a network interface.
+
+        :param network_interface: The NIC you wish to describe.
+        :type network_interface: :class:`ProfitBricksNetworkInterface`
+
+        :rtype:     : ``bool``
+        """  
+
         action = 'deleteNic'
         body = {'action': action,
                 'nicId': network_interface.id}
@@ -959,18 +1079,21 @@ class ProfitBricksNodeDriver(NodeDriver):
         return True
 
     def ex_set_inet_access(self, datacenter, network_interface, internet_access=True):
-        action = 'setInternetAccess'
+        raise NotImplementedError(
+            'While supported, this is '
+            'not implemented at this time.')
+        # action = 'setInternetAccess'
 
-        body = {'action': action,
-                'datacenterId': datacenter.id,
-                'lanId': network_interface.extra['lan_id'],
-                'internetAccess': str(internet_access).lower(),
-                'networkId': network_interface.id,
-                }
+        # body = {'action': action,
+        #         'datacenterId': datacenter.id,
+        #         'lanId': network_interface.extra['lan_id'],
+        #         'internetAccess': str(internet_access).lower(),
+        #         'networkId': network_interface.id,
+        #         }
 
-        self.connection.request(action=action,data=body,method='POST').object
+        # self.connection.request(action=action,data=body,method='POST').object
 
-        return True
+        # return True
 
     """ Snapshot Functions Not Implemented
     """
@@ -1011,10 +1134,10 @@ class ProfitBricksNodeDriver(NodeDriver):
                             'location': location}
                         )
 
-    def _to_images(self, object, region=None):
-        return [self._to_image(image, region) for image in object.findall('.//return')]
+    def _to_images(self, object):
+        return [self._to_image(image) for image in object.findall('.//return')]
 
-    def _to_image(self, image, region=None):
+    def _to_image(self, image):
         elements = list(image.iter())
         image_id = elements[0].find('imageId').text
         image_name = elements[0].find('imageName').text

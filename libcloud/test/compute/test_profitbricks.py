@@ -244,7 +244,7 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
         self.assertEqual(image.extra['memory_hotpluggable'], "false")
         self.assertEqual(image.extra['os_type'], "WINDOWS")
         self.assertEqual(image.extra['public'], "true")
-        self.assertEqual(image.extra['region'], "NORTH_AMERICA")
+        self.assertEqual(image.extra['location'], None)
         self.assertEqual(image.extra['writeable'], "true")
 
     ''' Datacenter Function Tests
@@ -399,7 +399,7 @@ class ProfitBricksNodeDriver(unittest.TestCase) :
 
         size = sizes[0]
         self.assertEquals(size.id,"1")
-        self.assertEquals(size.name,"ExtraSmall Instance")
+        self.assertEquals(size.name,"Micro")
         self.assertEquals(size.ram, 1024)
         self.assertEquals(size.disk, 50)
         self.assertEquals(size.bandwidth, None)
