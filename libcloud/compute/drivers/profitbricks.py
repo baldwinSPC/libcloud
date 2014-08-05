@@ -90,7 +90,7 @@ class ProfitBricksConnection(ConnectionUserAndKey):
             })
         soap_header = ET.SubElement(soap_env, 'soapenv:Header')
         soap_body = ET.SubElement(soap_env, 'soapenv:Body')
-        soap_req_body = ET.SubElement(soap_body, 'ws:' + data['action'] + '' )
+        soap_req_body = ET.SubElement(soap_body, 'ws:%s' % (data['action']))
 
         if 'request' in data.keys():
             soap_req_body = ET.SubElement(soap_req_body, 'request')
@@ -1079,21 +1079,20 @@ class ProfitBricksNodeDriver(NodeDriver):
         return True
 
     def ex_set_inet_access(self, datacenter, network_interface, internet_access=True):
-        raise NotImplementedError(
-            'While supported, this is '
-            'not implemented at this time.')
-        # action = 'setInternetAccess'
+        # Results in strange behavior within the provider, so for now
+        # this is commented out.
 
-        # body = {'action': action,
-        #         'datacenterId': datacenter.id,
-        #         'lanId': network_interface.extra['lan_id'],
-        #         'internetAccess': str(internet_access).lower(),
-        #         'networkId': network_interface.id,
-        #         }
+        action = 'setInternetAccess'
 
-        # self.connection.request(action=action,data=body,method='POST').object
+        body = {'action': action,
+                'dataCenterId': datacenter.id,
+                'lanId': network_interface.extra['lan_id'],
+                'internetAccess': str(internet_access).lower()
+                }
 
-        # return True
+        self.connection.request(action=action,data=body,method='POST').object
+
+        return True
 
     """ Snapshot Functions Not Implemented
     """
@@ -1317,9 +1316,8 @@ class ProfitBricksNodeDriver(NodeDriver):
     def _to_volume(self, volume, node=None):
         elements = list(volume.iter())
 
-        if node:
-            if node.id == elements[0].find('server_id').text:
-                print('Filtering by nodeid ' + node.id)
+        # if node:
+        #     if node.id == elements[0].find('server_id').text:
 
         datacenter_id = elements[0].find('dataCenterId').text
         datacenter_version = elements[0].find('dataCenterVersion').text
